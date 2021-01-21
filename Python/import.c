@@ -1371,7 +1371,36 @@ PyImport_ImportFrozenModuleObject(PyObject *name)
       PyMem_Free(arg_name);
       PyMem_Free(file_name);
     }
-
+    
+    /*
+     * The codeobject 'co' include the compile result of '_bootstrap.py'
+     * and 'exec_code_in_module' run the 'co' then load function and class 
+     * to module namespace of '_frozen_importlib'. How to understand 'load 
+     * function and class to module namespace'? It's build function and class.
+     * Look at two examples in '_bootstrap.py':
+     * '''
+     * def _wrap(new, old):
+     *  for replace in ['__module__', '__name__', '__qualname__', '__doc__']:       
+     *    if hasattr(old, replace):                                               
+     *      setattr(new, replace, getattr(old, replace))                        
+     *  new.__dict__.update(old.__dict__)
+     * '''
+     * will be built into a python function object, then saves to module 
+     * namespace.
+     * 
+     * '''
+     * class _DeadlockError(RuntimeError):
+     *     pass
+     * '''
+     * will be built into a class, and the bytecode when deal with this 
+     * class is: 
+     *  'LOAD_BUILD_CLASS', 'LOAD_CONST', 'MAKE_FUNCTION', 
+     *  'LOAD_NAME', 'CALL_FUNCTION', 'STORE_NAME'.
+     * Until now, I don't know how python build a class and function, but
+     * I know after build, the function and class can be directly used by
+     * python interpreter, for example invoke a function or create a class
+     * instance.
+     */
     m = exec_code_in_module(name, d, co);
     if (m == NULL)
         goto err_return;
