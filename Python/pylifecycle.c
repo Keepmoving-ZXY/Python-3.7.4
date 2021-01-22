@@ -287,6 +287,10 @@ get_locale_encoding(void)
 static _PyInitError
 initimport(PyInterpreterState *interp, PyObject *sysmod)
 {
+    /* 
+     * The 'sysmod' argument act 
+     * as 'sys' in python code. 
+     */
     PyObject *importlib;
     PyObject *impmod;
     PyObject *value;
@@ -753,7 +757,11 @@ _Py_InitializeCore_impl(PyInterpreterState **interp_p,
 
     if (!_PyFloat_Init())
         return _Py_INIT_ERR("can't init float");
-
+    
+    /*
+     * Create a dict, and this dict will be 
+     * act as 'sys.modules' in python code. 
+     */
     PyObject *modules = PyDict_New();
     if (modules == NULL)
         return _Py_INIT_ERR("can't make modules dictionary");
@@ -785,6 +793,7 @@ _Py_InitializeCore_impl(PyInterpreterState **interp_p,
      */
     Py_INCREF(interp->sysdict);
     PyDict_SetItemString(interp->sysdict, "modules", modules);
+    /* record ths 'sys' module is already load. */
     _PyImport_FixupBuiltin(sysmod, "sys", modules);
 
     /* Init Unicode implementation; relies on the codec registry */
@@ -793,11 +802,22 @@ _Py_InitializeCore_impl(PyInterpreterState **interp_p,
 
     if (_PyStructSequence_Init() < 0)
         return _Py_INIT_ERR("can't initialize structseq");
-
+    
+    /*
+     * Create python builtin module, the function 
+     * 'print' is in builtin module. 
+     */
     PyObject *bimod = _PyBuiltin_Init();
     if (bimod == NULL)
         return _Py_INIT_ERR("can't initialize builtins modules");
+    /* record ths 'builtin' module is already load. */
     _PyImport_FixupBuiltin(bimod, "builtins", modules);
+
+    /*
+     * When run 'print' function in python code, the interpreter will
+     * lookup implement of 'print' from 'interp->builtins'. 
+     * The 'interp->builtins' is the dict of 'builtin' modules.
+     */
     interp->builtins = PyModule_GetDict(bimod);
     if (interp->builtins == NULL)
         return _Py_INIT_ERR("can't initialize builtins dict");
@@ -814,12 +834,17 @@ _Py_InitializeCore_impl(PyInterpreterState **interp_p,
     _PySys_SetObjectId(&PyId_stderr, pstderr);
     PySys_SetObject("__stderr__", pstderr);
     Py_DECREF(pstderr);
-
+    
+    /*
+     * Until now, the 'sys' and 'builtin' module is 
+     * created, 'stderr' can be used in python code. 
+     */
     err = _PyImport_Init(interp);
     if (_Py_INIT_FAILED(err)) {
         return err;
     }
-
+    
+    /* 2021-1-22: ignore it temporarily */
     err = _PyImportHooks_Init();
     if (_Py_INIT_FAILED(err)) {
         return err;

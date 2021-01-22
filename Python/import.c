@@ -634,9 +634,6 @@ int
 _PyImport_FixupExtensionObject(PyObject *mod, PyObject *name,
                                  PyObject *filename, PyObject *modules)
 {
-    // mod is sysmod, name is 'sys', filename is 'sys', 
-    // modules is interp->modules, and interp->modules 
-    // is a dict object.
     PyObject *dict, *key;
     struct PyModuleDef *def;
     int res;
@@ -776,6 +773,7 @@ _PyImport_FindBuiltin(const char *name, PyObject *modules)
 PyObject *
 PyImport_AddModuleObject(PyObject *name)
 {
+    /* Get the dict that saves all imported module. */
     PyObject *modules = PyImport_GetModuleDict();
     return _PyImport_AddModuleObject(name, modules);
 }
@@ -801,9 +799,16 @@ _PyImport_AddModuleObject(PyObject *name, PyObject *modules)
     if (m != NULL && PyModule_Check(m)) {
         return m;
     }
+
+    /* 
+     * Create a new module object, but some 
+     * field need to fill in the module object. 
+     */
     m = PyModule_NewObject(name);
     if (m == NULL)
         return NULL;
+
+    /* add new module to 'sys.modules' */
     if (PyObject_SetItem(modules, name, m) != 0) {
         Py_DECREF(m);
         return NULL;
@@ -932,6 +937,12 @@ module_dict_for_exec(PyObject *name)
     /* If the module is being reloaded, we get the old module back
        and re-use its dict to exec the new code. */
     d = PyModule_GetDict(m);
+
+    /*
+     * save '__builtins__' and dict of builtin modules to module's dict, 
+     * and this will enable code in module to use builtin functions via
+     * symbol lookup.
+     */
     if (PyDict_GetItemString(d, "__builtins__") == NULL) {
         if (PyDict_SetItemString(d, "__builtins__",
                                  PyEval_GetBuiltins()) != 0) {
@@ -1348,6 +1359,12 @@ PyImport_ImportFrozenModuleObject(PyObject *name)
         if (err != 0)
             goto err_return;
     }
+
+    /*
+     * Create a module, setup up builtin functions to this 
+     * module, then return the dict of this module for fill
+     * in 'exec_code_in_module'.
+     */
     d = module_dict_for_exec(name);
     if (d == NULL) {
         goto err_return;
