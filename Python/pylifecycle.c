@@ -316,7 +316,8 @@ initimport(PyInterpreterState *interp, PyObject *sysmod)
     }
     interp->importlib = importlib;
     Py_INCREF(interp->importlib);
-
+    
+    /* 'interp->import_func' is 'builtin___import__' in bltinmodule.c */
     interp->import_func = PyDict_GetItemString(interp->builtins, "__import__");
     if (interp->import_func == NULL)
         return _Py_INIT_ERR("__import__ not found");
