@@ -493,6 +493,9 @@ def _spec_from_module(module, loader=None, origin=None):
         submodule_search_locations = list(module.__path__)
     except AttributeError:
         submodule_search_locations = None
+    
+    msg = '[_spec_from_module] name {}, loader {}, orgin {}'.format(name, loader, origin)
+    print(msg, file=sys.stderr) 
 
     spec = ModuleSpec(name, loader, origin=origin)
     spec._set_fileattr = False if location is None else True
@@ -1128,6 +1131,8 @@ def _setup(sys_module, _imp_module):
     # Set up the spec for existing builtin/frozen modules.
     module_type = type(sys)
     for name, module in sys.modules.items():
+        msg = '[_install] name {}, module {}'.format(name, module)
+        print(msg, file=sys.stderr)
         if isinstance(module, module_type):
             if name in sys.builtin_module_names:
                 loader = BuiltinImporter

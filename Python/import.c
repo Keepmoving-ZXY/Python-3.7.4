@@ -1203,6 +1203,12 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
         if (_PyUnicode_EqualToASCIIString(name, p->name)) {
             if (p->initfunc == NULL) {
                 /* Cannot re-init internal module ("sys" or "builtins") */
+                /*
+                 * The define of '_PyImport_Inittab_' is in 'Modules/config.c',
+                 * and pay attention to 'sys' and 'builtins' entry in it, it's
+                 * 'initfunc' is NULL then 'PyImport_AddModule' will return a 
+                 * created module, not create new module.
+                 */
                 mod = PyImport_AddModule(namestr);
                 Py_DECREF(name);
                 return mod;
