@@ -634,6 +634,10 @@ int
 _PyImport_FixupExtensionObject(PyObject *mod, PyObject *name,
                                  PyObject *filename, PyObject *modules)
 {
+    /*
+     * 'modules' a dict that act as 'sys.modules' in 
+     * python code, and 'mod' is a newly create module.
+     */
     PyObject *dict, *key;
     struct PyModuleDef *def;
     int res;
@@ -651,8 +655,23 @@ _PyImport_FixupExtensionObject(PyObject *mod, PyObject *name,
         PyErr_BadInternalCall();
         return -1;
     }
+
+    /*
+     * Save a newly created module to 'sys.module'.
+     */ 
     if (PyObject_SetItem(modules, name, mod) < 0)
         return -1;
+    
+    /*
+     * Every module has a 'm_base' field, type of 'm_base' 
+     * is 'PyModuleDef_Base', and 'm_base' has a field named 
+     * 'm_index', meaning of this field is the index at the
+     * global module list in interpreter. at now I don't know
+     * why interpreter need a list to save all created module.
+     * This function add module to interpreter's global module
+     * list.
+     * TODO: make sense this.
+     */
     if (_PyState_AddModule(mod, def) < 0) {
         PyMapping_DelItem(modules, name);
         return -1;
@@ -674,6 +693,14 @@ _PyImport_FixupExtensionObject(PyObject *mod, PyObject *name,
     key = PyTuple_Pack(2, filename, name);
     if (key == NULL)
         return -1;
+
+    /*
+     * Save a module's def to a dict named to 'extensions',
+     * I don't know why there need a global dict to save 
+     * module's def, and it seems that many modules may
+     * has the same module def.
+     * TODO: make sense this.
+     */
     res = PyDict_SetItem(extensions, key, (PyObject *)def);
     Py_DECREF(key);
     if (res < 0)
@@ -1183,6 +1210,14 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
     if (name == NULL) {
         return NULL;
     }
+    
+    if (getenv("PYTHON_DEBUG") != NULL) {
+      wchar_t *w_name;
+      Py_ssize_t size;
+      w_name = PyUnicode_AsWideCharString(name, &size);
+      printf("[_imp_create_builtin] name in spec is %ls\n", w_name);
+      PyMem_Free(w_name);
+    }
 
     mod = _PyImport_FindExtensionObject(name, name);
     if (mod || PyErr_Occurred()) {
@@ -1196,7 +1231,7 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
         Py_DECREF(name);
         return NULL;
     }
-
+    
     PyObject *modules = NULL;
     for (p = PyImport_Inittab; p->name != NULL; p++) {
         PyModuleDef *def;
@@ -1213,6 +1248,18 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
                 Py_DECREF(name);
                 return mod;
             }
+
+            if (getenv("PYTHON_DEBUG") != NULL) {
+                printf("[_imp_create_builtin] hit table entry "
+                       "%lx, name %s\n", (uint64_t)p, p->name);
+            }
+            
+            /*
+             * In a case, 'p->name' is '_thread', and p is the 21th 
+             * entry of '_PyImport_Inittab', and 'p->initfunc' is 
+             * 'PyInit__thread', this function return a module that
+             * bring thread support for python.
+             */
             mod = (*p->initfunc)();
             if (mod == NULL) {
                 Py_DECREF(name);
@@ -1230,8 +1277,17 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
                 }
                 def->m_base.m_init = p->initfunc;
                 if (modules == NULL) {
+                    /* 
+                     * get 'sys.modules' dict, this dict 
+                     * is for save all imported modules. 
+                     */
                     modules = PyImport_GetModuleDict();
                 }
+
+                /*
+                 * Avoid to initialize an extension 
+                 * module more than once. 
+                 */
                 if (_PyImport_FixupExtensionObject(mod, name, name,
                                                    modules) < 0) {
                     Py_DECREF(name);
