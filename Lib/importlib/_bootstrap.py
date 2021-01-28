@@ -312,6 +312,10 @@ class _installed_safely:
         # This must be done before putting the module in sys.modules
         # (otherwise an optimization shortcut in import.c becomes
         # wrong)
+        msg = '[_installed_safely.__enter__] ' \
+              'sepc.name is {}'.format(self._spec.name)
+        print(msg, file=sys.stderr)
+
         self._spec._initializing = True
         sys.modules[self._spec.name] = self._module
 
@@ -1144,12 +1148,15 @@ def _setup(sys_module, _imp_module):
             _init_module_attrs(spec, module)
 
     # Directly load built-in modules needed during bootstrap.
+    # '__name__' is module name and its '_frozen_importlib' 
+    # in this file.
     self_module = sys.modules[__name__]
     for builtin_name in ('_thread', '_warnings', '_weakref'):
         if builtin_name not in sys.modules:
             builtin_module = _builtin_from_name(builtin_name)
         else:
             builtin_module = sys.modules[builtin_name]
+        # Save builtin module to this module's dict. 
         setattr(self_module, builtin_name, builtin_module)
 
 
