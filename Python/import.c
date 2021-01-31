@@ -162,10 +162,19 @@ _PyImport_AcquireLock(void)
         if (import_lock == NULL)
             return;  /* Nothing much we can do. */
     }
+
+    /* Support recursion lock. */
     if (import_lock_thread == me) {
         import_lock_level++;
         return;
     }
+
+    /*
+     * If another thread has acquire the 'import_lock',
+     * wait it release and acquire the 'import_lock'.
+     * TODO: it seems that python's mutex is a imported 
+     * version of posix mutex, understand it.
+     */
     if (import_lock_thread != PYTHREAD_INVALID_THREAD_ID ||
         !PyThread_acquire_lock(import_lock, 0))
     {
@@ -1266,6 +1275,10 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
                 return NULL;
             }
             if (PyObject_TypeCheck(mod, &PyModuleDef_Type)) {
+                if (getenv("PYTHON_DEBUG") != NULL) {
+                  printf("[_imp_create_builtin] begin to"
+                         " run PyModule_FromDefAndSpec."); 
+                }
                 Py_DECREF(name);
                 return PyModule_FromDefAndSpec((PyModuleDef*)mod, spec);
             } else {

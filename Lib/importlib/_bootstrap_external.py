@@ -1504,6 +1504,9 @@ def _setup(_bootstrap_module):
 
     # Directly load built-in modules needed during bootstrap.
     self_module = sys.modules[__name__]
+    msg = '[_bootstrap_external._setup] __name__ is {}'.format(__name__)
+    print(msg, file=sys.stderr)
+
     for builtin_name in ('_io', '_warnings', 'builtins', 'marshal'):
         if builtin_name not in sys.modules:
             builtin_module = _bootstrap._builtin_from_name(builtin_name)

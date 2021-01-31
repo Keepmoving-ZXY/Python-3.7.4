@@ -312,10 +312,9 @@ class _installed_safely:
         # This must be done before putting the module in sys.modules
         # (otherwise an optimization shortcut in import.c becomes
         # wrong)
-        msg = '[_installed_safely.__enter__] ' \
-              'sepc.name is {}'.format(self._spec.name)
-        print(msg, file=sys.stderr)
-
+        # msg = '[_installed_safely.__enter__] ' \
+        #       'sepc.name is {}'.format(self._spec.name)
+        # print(msg, file=sys.stderr)
         self._spec._initializing = True
         sys.modules[self._spec.name] = self._module
 
@@ -673,7 +672,10 @@ def _load_unlocked(spec):
         # not a namespace package
         if not hasattr(spec.loader, 'exec_module'):
             return _load_backward_compatible(spec)
-
+    
+    # During first run 'import _frozen_importlib_external',
+    # this function will return a default module like a 
+    # empty box with nothing filled.
     module = module_from_spec(spec)
     with _installed_safely(module):
         if spec.loader is None:
@@ -681,6 +683,9 @@ def _load_unlocked(spec):
                 raise ImportError('missing loader', name=spec.name)
             # A namespace package so do nothing.
         else:
+            # During first run 'import _frozen_importlib_external',
+            # the 'exec_module' is 'FrozenImporter.exec_module'. So
+            # have a see to that method.
             spec.loader.exec_module(module)
 
     # We don't ensure that the import-related module attributes get
@@ -900,6 +905,9 @@ def _find_spec(name, path, target=None):
     # We check sys.modules here for the reload case.  While a passed-in
     # target will usually indicate a reload there is no guarantee, whereas
     # sys.modules provides one.
+    msg = '[_find_spec] meta_path is {}'.format(meta_path)
+    print(msg, file=sys.stderr)
+
     is_reload = name in sys.modules
     for finder in meta_path:
         with _ImportLockContext():
@@ -910,6 +918,9 @@ def _find_spec(name, path, target=None):
                 if spec is None:
                     continue
             else:
+                # Notice call this function does not means recursive call,
+                # because 'find_spec' here is not meant for current run
+                # function 'find_spec'.
                 spec = find_spec(name, path, target)
         if spec is not None:
             # The parent import may have already imported this module.
@@ -956,6 +967,8 @@ def _find_and_load_unlocked(name, import_):
     path = None
     parent = name.rpartition('.')[0]
     if parent:
+        msg = '[_find_and_load_unlocked] parent is {}'.format(parent)
+        print(msg, file=sys.stderr)
         if parent not in sys.modules:
             _call_with_frames_removed(import_, parent)
         # Crazy side-effects!
@@ -967,7 +980,14 @@ def _find_and_load_unlocked(name, import_):
         except AttributeError:
             msg = (_ERR_MSG + '; {!r} is not a package').format(name, parent)
             raise ModuleNotFoundError(msg, name=name) from None
+    
+    # When first run 'import _frozen_importlib_external', '_find_spec' will 
+    # return a ModuleSpec instance with loader is 'class FrozenImporter'.
     spec = _find_spec(name, path)
+    
+    msg = '[_find_and_load_unlocked] name {}, spec {}'.format(name, spec)
+    print(msg, file=sys.stderr)
+
     if spec is None:
         raise ModuleNotFoundError(_ERR_MSG.format(name), name=name)
     else:
@@ -987,6 +1007,8 @@ def _find_and_load(name, import_):
     with _ModuleLockManager(name):
         module = sys.modules.get(name, _NEEDS_LOADING)
         if module is _NEEDS_LOADING:
+            # If first run 'import _frozen_importlib_external', 
+            # enter this code branch.
             return _find_and_load_unlocked(name, import_)
 
     if module is None:
@@ -1171,6 +1193,11 @@ def _install(sys_module, _imp_module):
 def _install_external_importers():
     """Install importers that require external filesystem access"""
     global _bootstrap_external
+    # This will case python interpreter run 'import_name' in ceval.c, and 
+    # 'PyImport_ImportModuleLevelObject' is called in 'import_name', and 
+    # 'import_find_and_load' in 'PyImport_ImportModuleLevelObject' is called. 
+    # The 'import_find_and_load' will run '_find_and_load' in this file. So
+    # have a see to '_find_and_load'.
     import _frozen_importlib_external
     _bootstrap_external = _frozen_importlib_external
     _frozen_importlib_external._install(sys.modules[__name__])
