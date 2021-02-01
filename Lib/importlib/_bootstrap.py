@@ -827,7 +827,18 @@ class FrozenImporter:
         if not _imp.is_frozen(name):
             raise ImportError('{!r} is not a frozen module'.format(name),
                               name=name)
+
+        # During 'import _frozen_importlib_external', this function 
+        # get the bytecode of '_bootstrap_external.py' and compile
+        # them, generate a code object. And the bytecode comes from
+        # file 'importlib_external.h'.
         code = _call_with_frames_removed(_imp.get_frozen_object, name)
+
+        # Exec the code object here means create function, class in 
+        # '_bootstrap_external.py', and store them and other global 
+        # variable in '_bootstrap_external.py' to the module's dict,
+        # and don't forget that the module is '_frozen_importlib_external'.
+        # The behavior of this line is likely to 'exec_code_in_module'.
         exec(code, module.__dict__)
 
     @classmethod
@@ -905,9 +916,6 @@ def _find_spec(name, path, target=None):
     # We check sys.modules here for the reload case.  While a passed-in
     # target will usually indicate a reload there is no guarantee, whereas
     # sys.modules provides one.
-    msg = '[_find_spec] meta_path is {}'.format(meta_path)
-    print(msg, file=sys.stderr)
-
     is_reload = name in sys.modules
     for finder in meta_path:
         with _ImportLockContext():
