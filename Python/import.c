@@ -1793,7 +1793,12 @@ import_find_and_load(PyObject *abs_name)
       printf("[import_find_and_load] abs_name is %ls\n", w_name);
       PyMem_Free(w_name);
     }
-
+    
+    /*
+     * The 'interp->importlib' correspond to code in '_bootstrap.py',
+     * and it is a python code and create during python interpreter
+     * initialize.
+     */
     mod = _PyObject_CallMethodIdObjArgs(interp->importlib,
                                         &PyId__find_and_load, abs_name,
                                         interp->import_func, NULL);
