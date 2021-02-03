@@ -414,6 +414,8 @@ def _check_name(method):
                 if hasattr(old, replace):
                     setattr(new, replace, getattr(old, replace))
             new.__dict__.update(old.__dict__)
+    # This like @functools.wraps in decorator, see 
+    # functools.wraps usage in decorator for detail. 
     _wrap(_check_name_wrapper, method)
     return _check_name_wrapper
 
