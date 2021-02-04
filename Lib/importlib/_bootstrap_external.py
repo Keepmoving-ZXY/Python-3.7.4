@@ -866,8 +866,12 @@ class SourceLoader(_LoaderBasics):
             if hash_based:
                 if source_hash is None:
                     source_hash = _imp.source_hash(source_bytes)
+                # Write hash of source code to pyc file in order to 
+                # check whether the pyc file is recompiled or not.
                 data = _code_to_hash_pyc(code_object, source_hash, check_source)
             else:
+                # Write time of source code to pyc file in order to 
+                # check whether the pyc file is recompiled or not.
                 data = _code_to_timestamp_pyc(code_object, source_mtime,
                                               len(source_bytes))
             try:
