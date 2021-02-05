@@ -108,7 +108,13 @@ _PyImport_LoadDynamicModuleWithSpec(PyObject *spec, FILE *fp)
                         "spec.name must be a string");
         goto error;
     }
-
+    
+    /*
+     * I guess that if there is a extension module named 'rdma_lib.rdma',
+     * and if the extension file is located in 'rdma.so', this function
+     * will only return 'rdma'. 
+     * TODO: ensure it.
+     */
     name = get_encoded_name(name_unicode, &hook_prefix);
     if (name == NULL) {
         goto error;
@@ -126,6 +132,14 @@ _PyImport_LoadDynamicModuleWithSpec(PyObject *spec, FILE *fp)
     pathbytes = PyUnicode_EncodeFSDefault(path);
     if (pathbytes == NULL)
         goto error;
+
+    /*
+     * Open a dynamic link library(.so in linux), then get the 
+     * pointer to the function which name begin with 'PyInit'.
+     * For example, if the value of 'name_buf' is 'rdma', this 
+     * function will lookup address of function 'PyInit_rdma',
+     * then return it.
+     */
     exportfunc = _PyImport_FindSharedFuncptr(hook_prefix, name_buf,
                                              PyBytes_AS_STRING(pathbytes),
                                              fp);
@@ -156,6 +170,11 @@ _PyImport_LoadDynamicModuleWithSpec(PyObject *spec, FILE *fp)
         _Py_PackageContext = oldcontext;
         goto error;
     }
+
+    /*
+     * Create a python module by calling 'PyInit_xxx', 
+     * and the 'PyInit_xxx' comes from dynamic library.
+     */
     m = p0();
     _Py_PackageContext = oldcontext;
 
@@ -219,7 +238,11 @@ _PyImport_LoadDynamicModuleWithSpec(PyObject *spec, FILE *fp)
         PyErr_Clear(); /* Not important enough to report */
     else
         Py_INCREF(path);
-
+    
+    /*
+     * Save extension module to 'sys.modules', and prevent initialize it 
+     * more than once, goto '_PyImport_FixupExtensionObject' to see detail.
+     */
     PyObject *modules = PyImport_GetModuleDict();
     if (_PyImport_FixupExtensionObject(m, name_unicode, path, modules) < 0)
         goto error;
