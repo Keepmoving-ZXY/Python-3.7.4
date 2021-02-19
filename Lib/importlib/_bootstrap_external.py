@@ -1335,6 +1335,9 @@ class FileFinder:
         self._path_mtime = -1
         self._path_cache = set()
         self._relaxed_path_cache = set()
+        
+        msg = '[Notice] path when init FileFinder is {}'.format(self.path)
+        print(msg, file=sys.stderr)
 
     def invalidate_caches(self):
         """Invalidate the directory mtime."""
@@ -1506,6 +1509,7 @@ def _setup(_bootstrap_module):
     global sys, _imp, _bootstrap
     _bootstrap = _bootstrap_module
     sys = _bootstrap.sys
+    ## The '_imp' is a module method of which located in import.c.
     _imp = _bootstrap._imp
     
     # Directly load built-in modules needed during bootstrap.
