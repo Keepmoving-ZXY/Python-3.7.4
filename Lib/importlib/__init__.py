@@ -114,6 +114,7 @@ def import_module(name, package=None):
     relative import to an absolute import.
 
     """
+    ## From here to begin to understand import system in python level.
     level = 0
     if name.startswith('.'):
         if not package:
