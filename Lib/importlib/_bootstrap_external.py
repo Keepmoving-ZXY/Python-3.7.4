@@ -1335,9 +1335,6 @@ class FileFinder:
         self._path_mtime = -1
         self._path_cache = set()
         self._relaxed_path_cache = set()
-        
-        msg = '[Notice] path when init FileFinder is {}'.format(self.path)
-        print(msg, file=sys.stderr)
 
     def invalidate_caches(self):
         """Invalidate the directory mtime."""

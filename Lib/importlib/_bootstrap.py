@@ -886,6 +886,9 @@ class _ImportLockContext:
 
 def _resolve_name(name, package, level):
     """Resolve a relative module name to an absolute one."""
+    ## For example, name is '..d', package is 'a.b.c',
+    ## this will re-arrange module name to 'a.b.d', the
+    ## new name is an absoluate module name.
     bits = package.rsplit('.', level - 1)
     if len(bits) < level:
         raise ValueError('attempted relative import beyond top-level package')
@@ -959,6 +962,11 @@ def _sanity_check(name, package, level):
     if level < 0:
         raise ValueError('level must be >= 0')
     if level > 0:
+        ## The 'name' contain relative import, so 'package' 
+        ## should be set to help resolve relative import.
+        ## Such as name is '.a.b.c', and if package is None,
+        ## intepreter don't know where to find module 'a' and
+        ## module 'b'.
         if not isinstance(package, str):
             raise TypeError('__package__ not set to a string')
         elif not package:
@@ -975,8 +983,6 @@ def _find_and_load_unlocked(name, import_):
     path = None
     parent = name.rpartition('.')[0]
     if parent:
-        msg = '[_find_and_load_unlocked] parent is {}'.format(parent)
-        print(msg, file=sys.stderr)
         if parent not in sys.modules:
             _call_with_frames_removed(import_, parent)
         # Crazy side-effects!
@@ -992,10 +998,6 @@ def _find_and_load_unlocked(name, import_):
     # When first run 'import _frozen_importlib_external', '_find_spec' will 
     # return a ModuleSpec instance with loader is 'class FrozenImporter'.
     spec = _find_spec(name, path)
-    
-    msg = '[_find_and_load_unlocked] name {}, spec {}'.format(name, spec)
-    print(msg, file=sys.stderr)
-
     if spec is None:
         raise ModuleNotFoundError(_ERR_MSG.format(name), name=name)
     else:
@@ -1039,6 +1041,7 @@ def _gcd_import(name, package=None, level=0):
     """
     _sanity_check(name, package, level)
     if level > 0:
+        # Convert to absolute module name.
         name = _resolve_name(name, package, level)
     return _find_and_load(name, _gcd_import)
 
@@ -1165,8 +1168,6 @@ def _setup(sys_module, _imp_module):
     # Set up the spec for existing builtin/frozen modules.
     module_type = type(sys)
     for name, module in sys.modules.items():
-        msg = '[_install] name {}, module {}'.format(name, module)
-        print(msg, file=sys.stderr)
         if isinstance(module, module_type):
             if name in sys.builtin_module_names:
                 loader = BuiltinImporter
