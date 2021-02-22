@@ -312,9 +312,6 @@ class _installed_safely:
         # This must be done before putting the module in sys.modules
         # (otherwise an optimization shortcut in import.c becomes
         # wrong)
-        # msg = '[_installed_safely.__enter__] ' \
-        #       'sepc.name is {}'.format(self._spec.name)
-        # print(msg, file=sys.stderr)
         self._spec._initializing = True
         sys.modules[self._spec.name] = self._module
 
@@ -433,6 +430,8 @@ class ModuleSpec:
         self._set_fileattr = bool(value)
 
 
+## Construct a module spec with a importer in sys.meta_path, 
+## a importer is an object that can finds and loads a module.
 def spec_from_loader(name, loader, *, origin=None, is_package=None):
     """Return a module spec based on various loader methods."""
     if hasattr(loader, 'get_filename'):
@@ -497,9 +496,6 @@ def _spec_from_module(module, loader=None, origin=None):
     except AttributeError:
         submodule_search_locations = None
     
-    msg = '[_spec_from_module] name {}, loader {}, orgin {}'.format(name, loader, origin)
-    print(msg, file=sys.stderr) 
-
     spec = ModuleSpec(name, loader, origin=origin)
     spec._set_fileattr = False if location is None else True
     spec.cached = cached
@@ -592,6 +588,8 @@ def module_from_spec(spec):
                           'must also define create_module()')
     if module is None:
         module = _new_module(spec.name)
+
+    ## Fill in some field in module object.
     _init_module_attrs(spec, module)
     return module
 
@@ -666,6 +664,8 @@ def _load_backward_compatible(spec):
             pass
     return module
 
+## Create module object and install function, 
+## class and so on to module's namespace.
 def _load_unlocked(spec):
     # A helper for direct use by the import system.
     if spec.loader is not None:
@@ -673,19 +673,17 @@ def _load_unlocked(spec):
         if not hasattr(spec.loader, 'exec_module'):
             return _load_backward_compatible(spec)
     
-    # During first run 'import _frozen_importlib_external',
-    # this function will return a default module like a 
-    # empty box with nothing filled.
+    ## Create module a module object for a name.
     module = module_from_spec(spec)
+
+    ## Install function, class, global variable
+    ## and so on to the module namespace.
     with _installed_safely(module):
         if spec.loader is None:
             if spec.submodule_search_locations is None:
                 raise ImportError('missing loader', name=spec.name)
             # A namespace package so do nothing.
         else:
-            # During first run 'import _frozen_importlib_external',
-            # the 'exec_module' is 'FrozenImporter.exec_module'. So
-            # have a see to that method.
             spec.loader.exec_module(module)
 
     # We don't ensure that the import-related module attributes get
@@ -905,6 +903,8 @@ def _find_spec_legacy(finder, name, path):
     return spec_from_loader(name, loader)
 
 
+## Generate a module spec, and loader in module spec 
+## is the suitable importer for the requested module. 
 def _find_spec(name, path, target=None):
     """Find a module's spec."""
     meta_path = sys.meta_path
@@ -929,9 +929,12 @@ def _find_spec(name, path, target=None):
                 if spec is None:
                     continue
             else:
-                # Notice call this function does not means recursive call,
-                # because 'find_spec' here is not meant for current run
-                # function 'find_spec'.
+                ## The callable 'find_spec' should be one of:
+                ##  'PathFinder.find_spec',
+                ##  'FrozenImporter.find_spec',
+                ##  'BuiltinImporter.find_spec'.
+                ## The 'find_spec' return a module spec, goto website about 
+                ## python import system to understand what's module spec.
                 spec = find_spec(name, path, target)
         if spec is not None:
             # The parent import may have already imported this module.
