@@ -1384,9 +1384,16 @@ class FileFinder:
         if cache_module in cache:
             base_path = _path_join(self.path, tail_module)
             for suffix, loader_class in self._loaders:
+                ## The optional class and suffix can be:
+                ## 'SourceFileLoader' and '.py', 
+                ## 'SourcelessFileLoader' and '.pyc', 
+                ## 'SourcelessFileLoader' and 'so' or so on.  
                 init_filename = '__init__' + suffix
                 full_path = _path_join(base_path, init_filename)
+
                 if _path_isfile(full_path):
+                    ## For example, if value of 'full_path' is endwith 
+                    ## '__init__.py' and the loader is 'SourceFileLoader'.
                     return self._get_spec(loader_class, fullname, full_path, [base_path], target)
             else:
                 # If a namespace package, return the path if we don't

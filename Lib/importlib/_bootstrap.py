@@ -1020,8 +1020,6 @@ def _find_and_load(name, import_):
     with _ModuleLockManager(name):
         module = sys.modules.get(name, _NEEDS_LOADING)
         if module is _NEEDS_LOADING:
-            # If first run 'import _frozen_importlib_external', 
-            # enter this code branch.
             return _find_and_load_unlocked(name, import_)
 
     if module is None:
