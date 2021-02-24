@@ -1200,6 +1200,8 @@ class PathFinder:
             _warnings.warn('sys.path_hooks is empty', ImportWarning)
         for hook in sys.path_hooks:
             try:
+                ## Return a 'FileFinder' instance, 
+                ## which saves available loaders.
                 return hook(path)
             except ImportError:
                 continue
@@ -1221,6 +1223,8 @@ class PathFinder:
                 # Don't cache the failure as the cwd can easily change to
                 # a valid directory later on.
                 return None
+
+        ## Find or create a 'FileFinder' instance of this path.
         try:
             finder = sys.path_importer_cache[path]
         except KeyError:
@@ -1253,8 +1257,10 @@ class PathFinder:
             if not isinstance(entry, (str, bytes)):
                 continue
             finder = cls._path_importer_cache(entry)
+            ## The finder is a FileFinder instance.
             if finder is not None:
                 if hasattr(finder, 'find_spec'):
+                    ## goto FileFinder.find_spec to see detail.
                     spec = finder.find_spec(fullname, target)
                 else:
                     spec = cls._legacy_get_spec(fullname, finder)
@@ -1355,6 +1361,9 @@ class FileFinder:
         return spec.loader, spec.submodule_search_locations or []
 
     def _get_spec(self, loader_class, fullname, path, smsl, target):
+        msg = 'loader class {}, fullname {}, path {}, smsl {}, target {}'.format(loader_class, fullname, path, smsl, target)
+        print(msg, file=sys.stderr)
+
         loader = loader_class(fullname, path)
         return spec_from_file_location(fullname, path, loader=loader,
                                        submodule_search_locations=smsl)
@@ -1371,23 +1380,27 @@ class FileFinder:
         except OSError:
             mtime = -1
         if mtime != self._path_mtime:
+            ## Save directory and file in self.path.
             self._fill_cache()
             self._path_mtime = mtime
         # tail_module keeps the original casing, for __file__ and friends
         if _relax_case():
             cache = self._relaxed_path_cache
+            ## For fullname is 'a.b.c', 'tail_module' is 'c'.
             cache_module = tail_module.lower()
         else:
             cache = self._path_cache
             cache_module = tail_module
+        
         # Check if the module is the name of a directory (and thus a package).
         if cache_module in cache:
+            ## A value of 'cache_module' during run is 'encodings'.
             base_path = _path_join(self.path, tail_module)
             for suffix, loader_class in self._loaders:
                 ## The optional class and suffix can be:
                 ## 'SourceFileLoader' and '.py', 
                 ## 'SourcelessFileLoader' and '.pyc', 
-                ## 'SourcelessFileLoader' and 'so' or so on.  
+                ## 'ExtensionFileLoader' and '.so' or so on.  
                 init_filename = '__init__' + suffix
                 full_path = _path_join(base_path, init_filename)
 
