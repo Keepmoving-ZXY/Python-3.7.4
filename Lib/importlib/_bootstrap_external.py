@@ -572,7 +572,8 @@ def decode_source(source_bytes):
 
 _POPULATE = object()
 
-
+## 'location' is a file system path that 
+## contain the requested module's source file.
 def spec_from_file_location(name, location=None, *, loader=None,
                             submodule_search_locations=_POPULATE):
     """Return a module spec based on a file location.
@@ -631,7 +632,11 @@ def spec_from_file_location(name, location=None, *, loader=None,
                     spec.submodule_search_locations = []
     else:
         spec.submodule_search_locations = submodule_search_locations
+
     if spec.submodule_search_locations == []:
+        ## This module is a package and has submodules, full
+        ## 'spec.submodule_search_locations' to support import
+        ## submodule.
         if location:
             dirname = _path_split(location)[0]
             spec.submodule_search_locations.append(dirname)
@@ -1277,6 +1282,9 @@ class PathFinder:
                 #  on path.
                 namespace_path.extend(portions)
         else:
+            ## Spec for namespace package, the namespace package is a composite 
+            ## of various portions, where each portion contributes a subpackage 
+            ## to the parent package.
             spec = _bootstrap.ModuleSpec(fullname, None)
             spec.submodule_search_locations = namespace_path
             return spec
@@ -1361,10 +1369,12 @@ class FileFinder:
         return spec.loader, spec.submodule_search_locations or []
 
     def _get_spec(self, loader_class, fullname, path, smsl, target):
-        msg = 'loader class {}, fullname {}, path {}, smsl {}, target {}'.format(loader_class, fullname, path, smsl, target)
-        print(msg, file=sys.stderr)
-
         loader = loader_class(fullname, path)
+
+        ## Construct a module spec, fill module name, loader to create this 
+        ## module, and path of module's source file to it. And if module is 
+        ## a package, full submodule search location to help the import of 
+        ## submodule.
         return spec_from_file_location(fullname, path, loader=loader,
                                        submodule_search_locations=smsl)
 
@@ -1394,7 +1404,8 @@ class FileFinder:
         
         # Check if the module is the name of a directory (and thus a package).
         if cache_module in cache:
-            ## A value of 'cache_module' during run is 'encodings'.
+            ## The filesystem exist a directory named 'cache_module', 
+            ## so this module is a package.
             base_path = _path_join(self.path, tail_module)
             for suffix, loader_class in self._loaders:
                 ## The optional class and suffix can be:
@@ -1412,12 +1423,18 @@ class FileFinder:
                 # If a namespace package, return the path if we don't
                 #  find a module in the next section.
                 is_namespace = _path_isdir(base_path)
+
         # Check for a file w/ a proper suffix exists.
+        ## A namespace package or just import module in a file.
         for suffix, loader_class in self._loaders:
             full_path = _path_join(self.path, tail_module + suffix)
             _bootstrap._verbose_message('trying {}', full_path, verbosity=2)
+
+            ## Assume that 'cache_module' is 'abc' and suffix is '.py', check 
+            ## 'abc.py' is in directory search directory, see self._fill_cache() 
+            ## for detail.
             if cache_module + suffix in cache:
-                if _path_isfile(full_path):
+               if _path_isfile(full_path):
                     return self._get_spec(loader_class, fullname, full_path,
                                           None, target)
         if is_namespace:
