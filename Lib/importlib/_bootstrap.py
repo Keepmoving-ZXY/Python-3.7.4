@@ -38,10 +38,7 @@ def _new_module(name):
 
 # Module-level locking ########################################################
 
-# A dict mapping module names to weakrefs of _ModuleLock instances
-# Dictionary protected by the global import lock
 _module_locks = {}
-# A dict mapping thread ids to _ModuleLock instances
 _blocking_on = {}
 
 
@@ -1018,6 +1015,9 @@ _NEEDS_LOADING = object()
 def _find_and_load(name, import_):
     """Find and load the module."""
     with _ModuleLockManager(name):
+        ## When enter this code block, this thread will acquire a lock and this 
+        ## lock is recursive lock, which means that a thread acquire this lock 
+        ## more than one time.
         module = sys.modules.get(name, _NEEDS_LOADING)
         if module is _NEEDS_LOADING:
             return _find_and_load_unlocked(name, import_)
@@ -1026,7 +1026,11 @@ def _find_and_load(name, import_):
         message = ('import of {} halted; '
                    'None in sys.modules'.format(name))
         raise ModuleNotFoundError(message, name=name)
-
+    
+    ## Code will run to here in the case of:
+    ##  1.this thread want to import a moudule,
+    ##  2.another thread is importing the same module,
+    ## In this case, this thread will wait for importing thread to finish. 
     _lock_unlock_module(name)
     return module
 
