@@ -293,12 +293,19 @@ def cache_from_source(path, debug_override=None, *, optimization=None):
             message = 'debug_override or optimization must be set to None'
             raise TypeError(message)
         optimization = '' if debug_override else 1
+    ## Value of 'pyth' is absolute path of a .py file.
     path = _os.fspath(path)
     head, tail = _path_split(path)
+    ## Value of 'tail' is xxx.py, and value 
+    ## of 'base' is the filename of .py file.
     base, sep, rest = tail.rpartition('.')
+    ## Value of 'tag' is 'cpython-37' in current version.
     tag = sys.implementation.cache_tag
+
     if tag is None:
         raise NotImplementedError('sys.implementation.cache_tag is None')
+
+    ## The 'almost_filename' is a file path like '__init__.cpython-37'.
     almost_filename = ''.join([(base if base else rest), sep, tag])
     if optimization is None:
         if sys.flags.optimize == 0:
@@ -310,6 +317,7 @@ def cache_from_source(path, debug_override=None, *, optimization=None):
         if not optimization.isalnum():
             raise ValueError('{!r} is not alphanumeric'.format(optimization))
         almost_filename = '{}.{}{}'.format(almost_filename, _OPT, optimization)
+    ## Return the path of .pyc file.
     return _path_join(head, _PYCACHE, almost_filename + BYTECODE_SUFFIXES[0])
 
 
@@ -859,9 +867,14 @@ class SourceLoader(_LoaderBasics):
                     else:
                         _bootstrap._verbose_message('{} matches {}', bytecode_path,
                                                     source_path)
+                        ## Generate a code object from bytescode.
                         return _compile_bytecode(bytes_data, name=fullname,
                                                  bytecode_path=bytecode_path,
                                                  source_path=source_path)
+
+        ## Compile python code and save bytescode to a .pyc file. 
+        ## Code run to here maybe first import this module or need 
+        ## to update module cache.
         if source_bytes is None:
             source_bytes = self.get_data(source_path)
         code_object = self.source_to_code(source_bytes, source_path)
