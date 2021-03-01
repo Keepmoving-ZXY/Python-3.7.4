@@ -172,8 +172,9 @@ _PyImport_AcquireLock(void)
     /*
      * If another thread has acquire the 'import_lock',
      * wait it release and acquire the 'import_lock'.
-     * TODO: it seems that python's mutex is a imported 
+     * TODO: it seems that python's mutex is a improved 
      * version of posix mutex, understand it.
+     *
      */
     if (import_lock_thread != PYTHREAD_INVALID_THREAD_ID ||
         !PyThread_acquire_lock(import_lock, 0))
@@ -733,6 +734,7 @@ _PyImport_FixupBuiltin(PyObject *mod, const char *name, PyObject *modules)
 PyObject *
 _PyImport_FindExtensionObject(PyObject *name, PyObject *filename)
 {
+    // The 'modules' is 'sys.modules' in python code.
     PyObject *modules = PyImport_GetModuleDict();
     return _PyImport_FindExtensionObjectEx(name, filename, modules);
 }
@@ -741,10 +743,25 @@ PyObject *
 _PyImport_FindExtensionObjectEx(PyObject *name, PyObject *filename,
                                 PyObject *modules)
 {
+    if (getenv("PYTHON_DEBUG") != NULL) {
+      Py_ssize_t size = 0;
+      wchar_t *w_name = NULL;
+      wchar_t *w_path = NULL;
+      w_name = PyUnicode_AsWideCharString(name, &size);
+      w_path = PyUnicode_AsWideCharString(name, &size);
+
+      printf("[_PyImport_FindExtensionObjectEx] name is %ls, filename is %ls\n", 
+             w_name, w_path);
+
+      PyMem_Free(w_name);
+      PyMem_Free(w_path);
+    }
+
     PyObject *mod, *mdict, *key;
     PyModuleDef* def;
     if (extensions == NULL)
         return NULL;
+    
     key = PyTuple_Pack(2, filename, name);
     if (key == NULL)
         return NULL;
@@ -756,6 +773,8 @@ _PyImport_FindExtensionObjectEx(PyObject *name, PyObject *filename,
         /* Module does not support repeated initialization */
         if (def->m_base.m_copy == NULL)
             return NULL;
+
+        // Create an empty module object and save it to 'sys.modules'.
         mod = _PyImport_AddModuleObject(name, modules);
         if (mod == NULL)
             return NULL;
