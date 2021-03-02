@@ -109,12 +109,9 @@ _PyImport_LoadDynamicModuleWithSpec(PyObject *spec, FILE *fp)
         goto error;
     }
     
-    /*
-     * I guess that if there is a extension module named 'rdma_lib.rdma',
-     * and if the extension file is located in 'rdma.so', this function
-     * will only return 'rdma'. 
-     * TODO: ensure it.
-     */
+    // Suppose that 'name_unicode' is 'rdma_lib.rdma', and this function 
+    // return string 'rdma', and notice the 'hook_prefix' is fill to 'pyInit' 
+    // in this version.
     name = get_encoded_name(name_unicode, &hook_prefix);
     if (name == NULL) {
         goto error;

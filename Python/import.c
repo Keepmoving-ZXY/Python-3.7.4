@@ -769,6 +769,10 @@ _PyImport_FindExtensionObjectEx(PyObject *name, PyObject *filename,
     Py_DECREF(key);
     if (def == NULL)
         return NULL;
+
+    // Notice m_size == -1 means that this module has global status,
+    // so creation of new but the a imported module can't be the same 
+    // as that when the module is first imported.
     if (def->m_size == -1) {
         /* Module does not support repeated initialization */
         if (def->m_base.m_copy == NULL)
@@ -2287,7 +2291,9 @@ exec_builtin_or_dynamic(PyObject *mod) {
         /* Already initialized; skip reload */
         return 0;
     }
-
+    
+    // exec stage of multi-phase initialization, see module's multi-phase 
+    // initialization document for more detail.
     return PyModule_ExecDef(mod, def);
 }
 
