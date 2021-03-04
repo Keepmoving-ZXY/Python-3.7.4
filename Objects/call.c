@@ -313,21 +313,6 @@ _PyFunction_FastCallDict(PyObject *func, PyObject *const *args, Py_ssize_t nargs
     assert(nargs == 0 || args != NULL);
     assert(kwargs == NULL || PyDict_Check(kwargs));
   
-    if (getenv("PYTHON_DEBUG") != NULL) {
-      wchar_t *w_str;
-      Py_ssize_t w_size;
-      PyObject *co_name = co->co_name;
-      PyObject *co_filename = co->co_filename;
-
-      w_str = PyUnicode_AsWideCharString(co_name, &w_size); 
-      printf("[_PyFunction_FastCallDict] co_name is %ls\n", w_str);
-      PyMem_Free(w_str);
-
-      w_str = PyUnicode_AsWideCharString(co_filename, &w_size);
-      printf("[_PyFunction_FastCallDict] co_filename is %ls\n", w_str);
-      PyMem_Free(w_str);
-    }
-
     if (co->co_kwonlyargcount == 0 &&
         (kwargs == NULL || PyDict_GET_SIZE(kwargs) == 0) &&
         (co->co_flags & ~PyCF_MASK) == (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE))
@@ -379,18 +364,6 @@ _PyFunction_FastCallDict(PyObject *func, PyObject *const *args, Py_ssize_t nargs
     name = ((PyFunctionObject *)func) -> func_name;
     qualname = ((PyFunctionObject *)func) -> func_qualname;
     
-    if (getenv("PYTHON_DEBUG") != NULL) {
-      Py_ssize_t size = 0;
-      wchar_t *w_name = NULL;
-      w_name = PyUnicode_AsWideCharString(name, &size);
-      printf("name: %ls\n", w_name);
-      PyMem_Free(w_name);
-
-      w_name = PyUnicode_AsWideCharString(qualname, &size);
-      printf("qualname: %ls\n", w_name);
-      PyMem_Free(w_name);
-    }
-
     if (argdefs != NULL) {
         d = &PyTuple_GET_ITEM(argdefs, 0);
         nd = PyTuple_GET_SIZE(argdefs);

@@ -358,6 +358,7 @@ _PyImport_SetModuleString(const char *name, PyObject *m)
     return PyMapping_SetItemString(modules, name, m);
 }
 
+// Get module object from 'sys.modules'.
 PyObject *
 PyImport_GetModule(PyObject *name)
 {
@@ -1243,14 +1244,6 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
         return NULL;
     }
     
-    if (getenv("PYTHON_DEBUG") != NULL) {
-      wchar_t *w_name;
-      Py_ssize_t size;
-      w_name = PyUnicode_AsWideCharString(name, &size);
-      printf("[_imp_create_builtin] name in spec is %ls\n", w_name);
-      PyMem_Free(w_name);
-    }
-
     mod = _PyImport_FindExtensionObject(name, name);
     if (mod || PyErr_Occurred()) {
         Py_DECREF(name);
@@ -1281,11 +1274,6 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
                 return mod;
             }
 
-            if (getenv("PYTHON_DEBUG") != NULL) {
-                printf("[_imp_create_builtin] hit table entry "
-                       "%lx, name %s\n", (uint64_t)p, p->name);
-            }
-            
             /*
              * In a case, 'p->name' is '_thread', and p is the 21th 
              * entry of '_PyImport_Inittab', and 'p->initfunc' is 
@@ -1669,6 +1657,7 @@ resolve_name(PyObject *name, PyObject *globals, int level)
             goto error;
         }
         else if (spec != NULL && spec != Py_None) {
+            // Value of __parent__ should be equal to spec.__parent__.
             int equal;
             PyObject *parent = _PyObject_GetAttrId(spec, &PyId_parent);
             if (parent == NULL) {
@@ -1689,6 +1678,7 @@ resolve_name(PyObject *name, PyObject *globals, int level)
         }
     }
     else if (spec != NULL && spec != Py_None) {
+        // Get value of parent in __spec__.
         package = _PyObject_GetAttrId(spec, &PyId_parent);
         if (package == NULL) {
             goto error;
@@ -1724,7 +1714,9 @@ resolve_name(PyObject *name, PyObject *globals, int level)
             if (PyUnicode_READY(package) < 0) {
                 goto error;
             }
-
+            
+            // Find '.' from the end of string, so 
+            // dot is pos of last '.' in string.
             dot = PyUnicode_FindChar(package, '.',
                                         0, PyUnicode_GET_LENGTH(package), -1);
             if (dot == -2) {
@@ -1820,7 +1812,7 @@ import_find_and_load(PyObject *abs_name)
     /*
      * The 'interp->importlib' correspond to code in '_bootstrap.py',
      * and it is a python code and create during python interpreter
-     * initialize.
+     * initialize, this line will run '_find_and_load' in _bootsrap.py.
      */
     mod = _PyObject_CallMethodIdObjArgs(interp->importlib,
                                         &PyId__find_and_load, abs_name,
@@ -1862,7 +1854,7 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
         PyErr_SetString(PyExc_ValueError, "Empty module name");
         goto error;
     }
-
+  
     /* The below code is importlib.__import__() & _gcd_import(), ported to C
        for added performance. */
 
@@ -1891,9 +1883,13 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
         abs_name = name;
         Py_INCREF(abs_name);
     }
-
+    
+    // Get module object from 'sys.modules'.
     mod = PyImport_GetModule(abs_name);
     if (mod == NULL && PyErr_Occurred()) {
+        // Notice 'PyImport_GetModule' has clean key not found error
+        // during dict lookup, so another error may occur in another 
+        // thread, just exit.
         goto error;
     }
 
@@ -1933,7 +1929,9 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
         }
     }
     else {
+        // This module is never imported before.
         Py_XDECREF(mod);
+        // Run '_find_and_load' in _bootstrap.py.
         mod = import_find_and_load(abs_name);
         if (mod == NULL) {
             goto error;
@@ -1967,6 +1965,20 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
                 PyObject *front = PyUnicode_Substring(name, 0, dot);
                 if (front == NULL) {
                     goto error;
+                }
+                
+                if (getenv("PYTHON_DEBUG") != NULL) {
+                    Py_ssize_t size = 0;
+                    wchar_t *w_name = NULL;
+                    wchar_t *w_front = NULL;
+                    w_name = PyUnicode_AsWideCharString(name, &size);
+                    w_front = PyUnicode_AsWideCharString(front, &size);
+
+                    printf("[PyImport_ImportModuleLevelObject] front"
+                           " is %ls, name is %ls.\n", w_front, w_name);
+
+                    PyMem_Free(w_name);
+                    PyMem_Free(w_front);
                 }
 
                 final_mod = PyImport_ImportModuleLevelObject(front, NULL, NULL, NULL, 0);
@@ -2009,8 +2021,24 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
     Py_XDECREF(abs_name);
     Py_XDECREF(mod);
     Py_XDECREF(package);
-    if (final_mod == NULL)
+    if (final_mod == NULL) {
+        // Remove import related function from current stack, for example, 
+        // 'import rdma' will case the a error during import, if disable this 
+        // function, the stack is:
+        // >>> import rdma
+        // Traceback (most recent call last):
+        //   File "<stdin>", line 1, in <module>
+        //   File "<frozen importlib._bootstrap>", line 1023, in _find_and_load
+        //   File "<frozen importlib._bootstrap>", line 1002, in _find_and_load_unlocked
+        //   ModuleNotFoundError: No module named 'rdma'
+        //
+        // and if enable this function, the stack is:
+        // >>> import rdma
+        // Traceback (most recent call last):
+        //   File "<stdin>", line 1, in <module>
+        //   ModuleNotFoundError: No module named 'rdma'
         remove_importlib_frames();
+    }
     return final_mod;
 }
 

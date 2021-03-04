@@ -1932,15 +1932,6 @@ _PyEval_EvalFrameDefault(PyFrameObject *f, int throwflag)
                 goto error;
             }
 
-            if (getenv("PYTHON_DEBUG") != NULL) {
-              Py_ssize_t size = 0;
-              wchar_t *w_name = NULL;
-              w_name = PyUnicode_AsWideCharString(name, &size);
-              printf("[_PyEval_EvalFrameDefault, STORE_NAME]"
-                     " name is %ls\n", w_name);
-              PyMem_Free(w_name);
-            }
-
             if (PyDict_CheckExact(ns))
                 err = PyDict_SetItem(ns, name, v);
             else
@@ -2045,15 +2036,6 @@ _PyEval_EvalFrameDefault(PyFrameObject *f, int throwflag)
             PyObject *name = GETITEM(names, oparg);
             PyObject *v = POP();
 
-            if ((getenv("PYTHON_DEBUG")) != NULL) {
-              Py_ssize_t size = 0;
-              wchar_t *w_name = NULL;
-              w_name = PyUnicode_AsWideCharString(name, &size);
-              printf("[_PyEval_EvalFrameDefault, STORE_GLOBAL] name is %ls\n", 
-                     w_name);
-              PyMem_Free(w_name);
-            }
-
             int err;
             err = PyDict_SetItem(f->f_globals, name, v);
             Py_DECREF(v);
@@ -2082,15 +2064,6 @@ _PyEval_EvalFrameDefault(PyFrameObject *f, int throwflag)
                 PyErr_Format(PyExc_SystemError,
                              "no locals when loading %R", name);
                 goto error;
-            }
-
-            if (getenv("PYTHON_DEBUG") != NULL) {
-              wchar_t *wname = NULL;
-              Py_ssize_t size = 0;
-              wname = PyUnicode_AsWideCharString(name, &size);
-              printf("[_PyEval_EvalFrameDefault, LOAD_NAME] name is %ls\n", 
-                     wname);
-              PyMem_Free(wname);
             }
 
             if (PyDict_CheckExact(locals)) {
@@ -3149,12 +3122,6 @@ _PyEval_EvalFrameDefault(PyFrameObject *f, int throwflag)
 
         PREDICTED(CALL_FUNCTION);
         TARGET(CALL_FUNCTION) {
-            if (getenv("PYTHON_DEBUG") != NULL) {
-              int lineno = PyFrame_GetLineNumber(f);
-              printf("[_PyEval_EvalFrameDefault, CALL_FUNCTION] "
-                     "lineno is %d\n", lineno);
-            }
-
             PyObject **sp, *res;
             sp = stack_pointer;
             res = call_function(&sp, oparg, NULL);
@@ -3239,18 +3206,9 @@ _PyEval_EvalFrameDefault(PyFrameObject *f, int throwflag)
         TARGET(MAKE_FUNCTION) {
             PyObject *qualname = POP();
             PyObject *codeobj = POP();
-            PyFunctionObject *func = (PyFunctionObject *)
-                PyFunction_NewWithQualName(codeobj, f->f_globals, qualname);
+            PyFunctionObject *func = (PyFunctionObject *) 
+              PyFunction_NewWithQualName(codeobj, f->f_globals, qualname);
             
-            if (getenv("PYTHON_DEBUG") != NULL) {
-              Py_ssize_t size = 0;
-              wchar_t *w_qualname = NULL;
-              w_qualname = PyUnicode_AsWideCharString(qualname, &size);
-              printf("[_PyEval_EvalFrameDefault, MAKE_FUNCTION]"
-                     " qualname is %ls\n", w_qualname);
-              PyMem_Free(w_qualname);
-            }
-
             Py_DECREF(codeobj);
             Py_DECREF(qualname);
             if (func == NULL) {
@@ -4812,6 +4770,15 @@ import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *leve
         if (ilevel == -1 && PyErr_Occurred()) {
             return NULL;
         }
+        
+        if (getenv("PYTHON_DEBUG") != NULL) {
+          Py_ssize_t size = 0;
+          wchar_t *w_name = NULL;
+          w_name = PyUnicode_AsWideCharString(name, &size);
+          printf("[import_name] run fast path, name %ls\n", w_name);
+          PyMem_Free(w_name);
+        }
+
         res = PyImport_ImportModuleLevelObject(
                         name,
                         f->f_globals,
@@ -4822,6 +4789,14 @@ import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *leve
     }
 
     Py_INCREF(import_func);
+
+    if (getenv("PYTHON_DEBUG") != NULL) {
+      Py_ssize_t size = 0;
+      wchar_t *w_name = NULL;
+      w_name = PyUnicode_AsWideCharString(name, &size);
+      printf("[import_name] run __import__, name %ls\n", w_name);
+      PyMem_Free(w_name);
+    }
 
     stack[0] = name;
     stack[1] = f->f_globals;
