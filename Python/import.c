@@ -1919,6 +1919,8 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
             if (initializing == -1)
                 PyErr_Clear();
             if (initializing > 0) {
+                // Run '_lock_unlock_module' in _bootstrap.py, this function
+                // ensure the requested module is initialized completely.
                 value = _PyObject_CallMethodIdObjArgs(interp->importlib,
                                                 &PyId__lock_unlock_module, abs_name,
                                                 NULL);
@@ -1971,11 +1973,14 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
                     Py_ssize_t size = 0;
                     wchar_t *w_name = NULL;
                     wchar_t *w_front = NULL;
+                    wchar_t *w_absname = NULL;
                     w_name = PyUnicode_AsWideCharString(name, &size);
                     w_front = PyUnicode_AsWideCharString(front, &size);
+                    w_absname = PyUnicode_AsWideCharString(abs_name, &size);
 
-                    printf("[PyImport_ImportModuleLevelObject] front"
-                           " is %ls, name is %ls.\n", w_front, w_name);
+                    printf("[PyImport_ImportModuleLevelObject] abs name "
+                           "is %ls, name is %ls, front is %ls\n", w_absname, 
+                           w_name, w_front);
 
                     PyMem_Free(w_name);
                     PyMem_Free(w_front);
