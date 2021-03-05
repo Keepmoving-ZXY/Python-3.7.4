@@ -4751,6 +4751,25 @@ cmp_outcome(int op, PyObject *v, PyObject *w)
     return v;
 }
 
+// The following file system layout define a 
+// top level package with three subpackages:
+//   parent/
+//     __init__.py
+//     one/
+//       __init__.py
+//       one.py
+//     two/
+//       __init__.py
+//       two.py
+//     three/
+//       __init__.py
+//       three.py
+//
+//  In the parent directory of 'parent', start python then run 
+//  'import parent.one.one', then 'import_name' function will 
+//  run and return module object of 'parent'.
+//  TODO: explain why 'import_name' return module object of 'parent'.
+//
 static PyObject *
 import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *level)
 {
@@ -4785,6 +4804,14 @@ import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *leve
                         f->f_locals == NULL ? Py_None : f->f_locals,
                         fromlist,
                         ilevel);
+
+        if (getenv("PYTHON_DEBUG") != NULL) {
+          if (res && PyModule_Check(res)) {
+            const char *mod_name = PyModule_GetName(res);
+            printf("[import_name] name of return module is %s\n", mod_name);
+          }
+        }
+
         return res;
     }
 

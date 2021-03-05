@@ -1988,6 +1988,17 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
 
                 final_mod = PyImport_ImportModuleLevelObject(front, NULL, NULL, NULL, 0);
                 Py_DECREF(front);
+
+                if (getenv("PYTHON_DEBUG") != NULL) {
+                  if (PyModule_Check(final_mod)) {
+                    const char *mod_name = NULL;
+                    mod_name = PyModule_GetName(final_mod);
+                    printf("[PyImport_ImportModuleLevelObject] name of final_mod is %s\n", mod_name);
+                  } else {
+                    printf("[PyImport_ImportModuleLevelObject] final_mod is not a module object.");
+                  }
+                }
+
             }
             else {
                 Py_ssize_t cut_off = len - dot;
