@@ -4767,8 +4767,15 @@ cmp_outcome(int op, PyObject *v, PyObject *w)
 //
 //  In the parent directory of 'parent', start python then run 
 //  'import parent.one.one', then 'import_name' function will 
-//  run and return module object of 'parent'.
-//  TODO: explain why 'import_name' return module object of 'parent'.
+//  run and return module object of 'parent'. 
+//  But why 'import parent.one.one' only return a module object of 'parent'?
+//  Assume that parent/one/one.py has a function called 'say_hello', and after 
+//  'import parent.one.one', can't run say_hello function with below code:
+//      import parnet.one.one
+//      say_hello() // wrong statement.
+//  The right code is:
+//      import parent.one.one
+//      parent.one.one.say_hello() // right statement.
 //
 static PyObject *
 import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *level)
