@@ -4845,6 +4845,7 @@ import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *leve
 static PyObject *
 import_from(PyObject *v, PyObject *name)
 {
+    // Type of 'v' is 'PyModuleObject'.
     PyObject *x;
     _Py_IDENTIFIER(__name__);
     PyObject *fullmodname, *pkgname, *pkgpath, *pkgname_or_unknown, *errmsg;
@@ -4911,6 +4912,29 @@ import_from(PyObject *v, PyObject *name)
     return NULL;
 }
 
+// The following file system layout define a 
+// top level package with three subpackages:
+//   parent/
+//     __init__.py
+//     one/
+//       __init__.py
+//       one.py
+//     two/
+//       __init__.py
+//       two.py
+//     three/
+//       __init__.py
+//       three.py
+// 
+// In the parent directory of 'parent', code 'from parent import *' will
+// compile into below bytecode:
+//      0 LOAD_CONST               0 (0)
+//      2 LOAD_CONST               1 (('*',))
+//      4 IMPORT_NAME              0 (parent)
+//      6 IMPORT_STAR
+//      8 LOAD_CONST               2 (None)
+//      10 RETURN_VALUE
+//
 static int
 import_all_from(PyObject *locals, PyObject *v)
 {
@@ -4959,6 +4983,15 @@ import_all_from(PyObject *locals, PyObject *v)
                 continue;
             }
         }
+
+        if (getenv("PYTHON_DEBUG") != NULL) {
+            Py_ssize_t size = 0;
+            wchar_t *attr_name = NULL;
+            attr_name = PyUnicode_AsWideCharString(name, &size);
+            printf("[import_all_from] handing attr %ls\n", attr_name);
+            PyMem_Free(attr_name);
+        }
+
         value = PyObject_GetAttr(v, name);
         if (value == NULL)
             err = -1;

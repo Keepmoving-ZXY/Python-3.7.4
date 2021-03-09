@@ -1063,9 +1063,6 @@ def _handle_fromlist(module, fromlist, import_, *, recursive=False):
     # If a package was imported, try to import stuff from fromlist.
     if hasattr(module, '__path__'):
         for x in fromlist:
-            msg = 'x is {}'.format(x)
-            print(msg, file=sys.stderr)
-
             if not isinstance(x, str):
                 if recursive:
                     where = module.__name__ + '.__all__'
