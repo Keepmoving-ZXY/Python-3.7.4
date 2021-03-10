@@ -4773,7 +4773,7 @@ cmp_outcome(int op, PyObject *v, PyObject *w)
 //  'import parent.one.one', can't run say_hello function with below code:
 //      import parnet.one.one
 //      say_hello() // wrong statement.
-//  The right code is:
+//  the right code is:
 //      import parent.one.one
 //      parent.one.one.say_hello() // right statement.
 //
@@ -4842,6 +4842,15 @@ import_name(PyFrameObject *f, PyObject *name, PyObject *fromlist, PyObject *leve
     return res;
 }
 
+// Assume that file system layout is the same as layout in comment 
+// of 'import_name', and the code "from parent.one.one import say_hello' 
+// will compile into below bytecode:
+//   0 LOAD_CONST               0 (0)
+//   2 LOAD_CONST               1 (('say_hello',))
+//   4 IMPORT_NAME              0 (parent.one.one)
+//   6 IMPORT_FROM              1 (say_hello)
+//   8 STORE_NAME               1 (say_hello)
+// So the function 'say_hello' will be found in the dict of module one.
 static PyObject *
 import_from(PyObject *v, PyObject *name)
 {
@@ -4851,11 +4860,13 @@ import_from(PyObject *v, PyObject *name)
     PyObject *fullmodname, *pkgname, *pkgpath, *pkgname_or_unknown, *errmsg;
 
     if (_PyObject_LookupAttr(v, name, &x) != 0) {
+        // 'name' just a field of module.
         return x;
     }
     /* Issue #17636: in case this failed because of a circular relative
        import, try to fallback on reading the module directly from
        sys.modules. */
+    // 'name' is the name of a submodule. 
     pkgname = _PyObject_GetAttrId(v, &PyId___name__);
     if (pkgname == NULL) {
         goto error;
