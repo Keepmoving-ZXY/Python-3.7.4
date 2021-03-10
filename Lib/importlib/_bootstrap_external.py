@@ -1308,6 +1308,11 @@ class PathFinder:
 
         The search is based on sys.path_hooks and sys.path_importer_cache.
         """
+        ## For example, during 'import parent', the 'path' will be None, so use 
+        ## file system location in 'sys.path' to search this module; And during
+        ## 'import parent.one', import system first import 'parent' then import
+        ## 'parent.one', and during import 'parent.one', path comes from parent
+        ## module's __path__ attribute.
         if path is None:
             path = sys.path
         spec = cls._get_spec(fullname, path, target)
@@ -1498,6 +1503,7 @@ class FileFinder:
         raised.
 
         """
+        ## Notice this closure return a FileFinder instance with some loader.
         def path_hook_for_FileFinder(path):
             """Path hook for importlib.machinery.FileFinder."""
             if not _path_isdir(path):

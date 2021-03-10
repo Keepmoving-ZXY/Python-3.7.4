@@ -1076,6 +1076,10 @@ def _handle_fromlist(module, fromlist, import_, *, recursive=False):
                                      recursive=True)
             elif not hasattr(module, x):
                 from_name = '{}.{}'.format(module.__name__, x)
+                
+                msg = '[_handle_fromlist] from_name is {}'.format(from_name)
+                print(msg, file=sys.stderr)
+                
                 try:
                     _call_with_frames_removed(import_, from_name)
                 except ModuleNotFoundError as exc:
