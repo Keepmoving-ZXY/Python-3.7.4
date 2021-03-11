@@ -4858,7 +4858,7 @@ import_from(PyObject *v, PyObject *name)
     PyObject *x;
     _Py_IDENTIFIER(__name__);
     PyObject *fullmodname, *pkgname, *pkgpath, *pkgname_or_unknown, *errmsg;
-
+    
     if (_PyObject_LookupAttr(v, name, &x) != 0) {
         // 'name' just a field of module.
         return x;

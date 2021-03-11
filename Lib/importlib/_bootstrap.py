@@ -998,6 +998,10 @@ def _find_and_load_unlocked(name, import_):
     # When first run 'import _frozen_importlib_external', '_find_spec' will 
     # return a ModuleSpec instance with loader is 'class FrozenImporter'.
     spec = _find_spec(name, path)
+
+    msg = '[_find_and_load_unlocked] name {}, spec {}'.format(name, spec)
+    print(msg, file=sys.stderr)
+
     if spec is None:
         raise ModuleNotFoundError(_ERR_MSG.format(name), name=name)
     else:
@@ -1051,6 +1055,13 @@ def _gcd_import(name, package=None, level=0):
     return _find_and_load(name, _gcd_import)
 
 
+## Just think about the difference of below two code:
+##   from parent.one import one
+##   from parent.one.one import say_hello
+## and when run the first statement, 'module' is a package module, has 
+## __path__ attribute, so continue to import a module in it; and when 
+## run the secound statement, 'module' comes from one.py, don't have the
+## __path__ attribute, not a package, so don't continue to import.
 def _handle_fromlist(module, fromlist, import_, *, recursive=False):
     """Figure out what __import__ should return.
 
@@ -1061,6 +1072,11 @@ def _handle_fromlist(module, fromlist, import_, *, recursive=False):
     """
     # The hell that is fromlist ...
     # If a package was imported, try to import stuff from fromlist.
+    
+    msg = '[_handle_fromlist] from_list {}, module {}, has \'__path__\' attr {}'.format(
+            fromlist, module, hasattr(module, '__path__'))
+    print(msg, file=sys.stderr)
+    
     if hasattr(module, '__path__'):
         for x in fromlist:
             if not isinstance(x, str):
