@@ -4616,6 +4616,20 @@ call_function(PyObject ***pp_stack, Py_ssize_t oparg, PyObject *kwnames)
         }
 
         if (PyFunction_Check(func)) {
+            const char *stop_function = NULL;
+            if (NULL != (getenv("PYTHON_DEBUG")) && 
+                    (NULL != (stop_function = getenv("STOP_FUNC")))) {
+                PyObject *temp = NULL;
+                temp = PyUnicode_AsASCIIString(
+                        ((PyFunctionObject*)func)->func_name);
+                if (NULL == temp) {
+                    printf("func->func_name can't convert to ASCII.\n");
+                } else {
+                    char *func_name = PyBytes_AsString(temp);
+                    if (0 == strncmp(func_name, stop_function, strlen(func_name)))
+                        printf("[call_function] function name is %s\n", stop_function);
+                }
+            }
             x = _PyFunction_FastCallKeywords(func, stack, nargs, kwnames);
         }
         else {
