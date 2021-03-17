@@ -543,6 +543,7 @@ PyEval_EvalFrame(PyFrameObject *f) {
 PyObject *
 PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
 {
+    // The value of 'eval_frame' is '_PyEval_EvalFrameDefault'.
     PyThreadState *tstate = PyThreadState_GET();
     return tstate->interp->eval_frame(f, throwflag);
 }

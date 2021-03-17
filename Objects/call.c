@@ -401,10 +401,37 @@ _PyFunction_FastCallKeywords(PyObject *func, PyObject *const *stack,
     /* kwnames must only contains str strings, no subclass, and all keys must
        be unique */
 
+    if (NULL != getenv("PYTHON_DEBUG") && NULL != getenv("STOP_FUNC")) {
+        PyObject *temp = NULL;
+        temp = PyUnicode_AsASCIIString(((PyFunctionObject*)func)->func_name);
+        if (NULL == temp) {
+            printf("func->func_name can't convert to ASCII.\n");
+        } else {
+            char *func_name = PyBytes_AsString(temp);
+            const char *stop_func = getenv("STOP_FUNC");
+            if (0 == strncmp(func_name, stop_func, strlen(func_name))) {
+                printf("[Notice] co_argcount of function '%s' is %d.\n", 
+                        func_name, co->co_argcount);
+                printf("[Notice] co_kwonlyargcount of function '%s' is %d.\n", 
+                        func_name, co->co_kwonlyargcount);
+            }
+        }
+    }
+    
+    // co->co_argcount is the number of total argument of a function.
+    // co->co_kwonlyargcount is hard to understand, so let's see a example:
+    //   def func(r, *b, h = 2):
+    //      pass
+    // And use below code to run this function:
+    //   func(1, (2, 2, 2), h = 2) // just a example.
+    // The kwonlyarguments are arguments that come after *b and before 
+    // **kwargs if has, so the meaning of co->co_kwonlyargcount make sense.
     if (co->co_kwonlyargcount == 0 && nkwargs == 0 &&
         (co->co_flags & ~PyCF_MASK) == (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE))
     {
         if (argdefs == NULL && co->co_argcount == nargs) {
+            // No default argument and all argument provided, object 
+            // in 'stack' is the all arguments of this function.
             return function_code_fastcall(co, stack, nargs, globals);
         }
         else if (nargs == 0 && argdefs != NULL
