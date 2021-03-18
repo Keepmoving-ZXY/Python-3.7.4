@@ -415,6 +415,7 @@ _PyFunction_FastCallKeywords(PyObject *func, PyObject *const *stack,
                 printf("[Notice] co_kwonlyargcount of function '%s' is %d.\n", 
                         func_name, co->co_kwonlyargcount);
             }
+            Py_XDECREF(temp);
         }
     }
     
@@ -448,6 +449,25 @@ _PyFunction_FastCallKeywords(PyObject *func, PyObject *const *stack,
     closure = PyFunction_GET_CLOSURE(func);
     name = ((PyFunctionObject *)func) -> func_name;
     qualname = ((PyFunctionObject *)func) -> func_qualname;
+
+    if (NULL != getenv("PYTHON_DEBUG")) {
+        PyObject *b_name = NULL;
+        PyObject *b_qualname = NULL;
+        const char *qual_name = NULL;
+        const char *func_name = NULL;
+
+        b_name = PyUnicode_AsASCIIString(name);
+        func_name = PyBytes_AsString(b_name);
+        
+        b_qualname = PyUnicode_AsASCIIString(qualname);
+        qual_name = PyBytes_AsString(b_qualname);
+
+        printf("[_PyFunction_FastCallKeywords] name is %s, qualname is %s.\n", 
+                func_name, qual_name);
+
+        Py_XDECREF(b_name);
+        Py_XDECREF(b_qualname);
+    }
 
     if (argdefs != NULL) {
         d = &PyTuple_GET_ITEM(argdefs, 0);
