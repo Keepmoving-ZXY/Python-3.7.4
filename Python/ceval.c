@@ -3698,7 +3698,13 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
     }
     fastlocals = f->f_localsplus;
     freevars = f->f_localsplus + co->co_nlocals;
-
+    
+    // Variable-length arguments, varargs in short, are arguments that can 
+    // take an unspecified amount of input, and in python varargs is *args
+    // in function def.
+    // Variable-Length keyword arguments, varkwords in short, are arguments 
+    // that an unspecified amount of input in key-word format, and in python
+    // varkwargs is **kw in function def.
     /* Create a dictionary for keyword parameters (**kwags) */
     if (co->co_flags & CO_VARKEYWORDS) {
         kwdict = PyDict_New();
