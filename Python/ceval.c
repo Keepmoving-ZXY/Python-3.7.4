@@ -3608,6 +3608,7 @@ static void
 too_many_positional(PyCodeObject *co, Py_ssize_t given, Py_ssize_t defcount,
                     PyObject **fastlocals)
 {
+    // The 'given' is the number of argument passed in when call a function. 
     int plural;
     Py_ssize_t kwonly_given = 0;
     Py_ssize_t i;
@@ -3766,6 +3767,9 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
            normally interned this should almost always hit. */
         co_varnames = ((PyTupleObject *)(co->co_varnames))->ob_item;
         for (j = 0; j < total_args; j++) {
+            // Handle the argument that define as 'k = value' form,
+            // for example in 'def fn(a, b, c = 1, **kwargs)', this
+            // case handle argument 'c'.
             PyObject *name = co_varnames[j];
             if (name == keyword) {
                 goto kw_found;
@@ -3774,8 +3778,11 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
 
         /* Slow fallback, just in case */
         for (j = 0; j < total_args; j++) {
+            // Handle the argument that in define as '**kwargs' form,
+            // for example in 'def fn(a, b, c = 1, **kwargs)', this
+            // case handle argument in '**kwargs'.
             PyObject *name = co_varnames[j];
-            int cmp = PyObject_RichCompareBool( keyword, name, Py_EQ);
+            int cmp = PyObject_RichCompareBool(keyword, name, Py_EQ);
             if (cmp > 0) {
                 goto kw_found;
             }
