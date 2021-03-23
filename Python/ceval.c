@@ -3566,6 +3566,9 @@ format_missing(const char *kind, PyCodeObject *co, PyObject *names)
     Py_DECREF(name_str);
 }
 
+// Main idea of this function is that check if value some index of 'fastlocals' is 
+// null or not in a fixed range(range for positional argument or keyword argument), 
+// see fastlocals mechanism for detail. 
 static void
 missing_arguments(PyCodeObject *co, Py_ssize_t missing, Py_ssize_t defcount,
                   PyObject **fastlocals)
@@ -3722,6 +3725,7 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
     }
 
     /* Copy positional arguments into local variables */
+    // n is number of positional arguments that passed in when run a function.
     if (argcount > co->co_argcount) {
         n = co->co_argcount;
     }
@@ -3823,6 +3827,10 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
 
     /* Add missing positional arguments (copy default values from defs) */
     if (argcount < co->co_argcount) {
+        // 'm' means the minimum number of argument that should passed in 
+        // when run a function. The meaning of 'co_argcount' is number of 
+        // positional arguments expect *args, including positional argument 
+        // that include default values.
         Py_ssize_t m = co->co_argcount - defcount;
         Py_ssize_t missing = 0;
         for (i = argcount; i < m; i++) {
@@ -3831,12 +3839,23 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
             }
         }
         if (missing) {
+            // TODO: understand it.
             missing_arguments(co, missing, defcount, fastlocals);
             goto fail;
         }
+
+        // There is at least 'm' positional number of argument, and passed in 'n' 
+        // positional arguments, and 'm' is the number of positional argument that 
+        // have no default values. So if 'n' is greater that 'm', then some positional 
+        // argument that have default value also passed, otherwise no positional 
+        // arguments that have default value passed in.
         if (n > m)
+            // Part or all positional arguments 
+            // that have default value passed in. 
             i = n - m;
         else
+            // No position arguments that 
+            // have default value passed in.
             i = 0;
         for (; i < defcount; i++) {
             if (GETLOCAL(m+i) == NULL) {
@@ -3853,9 +3872,12 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
         for (i = co->co_argcount; i < total_args; i++) {
             PyObject *name;
             if (GETLOCAL(i) != NULL)
+                // Skip provided keyword argument.
                 continue;
+            
             name = PyTuple_GET_ITEM(co->co_varnames, i);
             if (kwdefs != NULL) {
+                // Lookup default value of a keyword argument.
                 PyObject *def = PyDict_GetItem(kwdefs, name);
                 if (def) {
                     Py_INCREF(def);
@@ -3866,6 +3888,7 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
             missing++;
         }
         if (missing) {
+            // TODO: understand it.
             missing_arguments(co, missing, -1, fastlocals);
             goto fail;
         }
