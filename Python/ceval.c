@@ -3677,6 +3677,8 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
            PyObject *kwdefs, PyObject *closure,
            PyObject *name, PyObject *qualname)
 {
+    // 'defcount' means the number of default 
+    // arguments in positional arguments.
     PyCodeObject* co = (PyCodeObject*)_co;
     PyFrameObject *f;
     PyObject *retval = NULL;
@@ -3839,7 +3841,6 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
             }
         }
         if (missing) {
-            // TODO: understand it.
             missing_arguments(co, missing, defcount, fastlocals);
             goto fail;
         }
@@ -3888,7 +3889,6 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
             missing++;
         }
         if (missing) {
-            // TODO: understand it.
             missing_arguments(co, missing, -1, fastlocals);
             goto fail;
         }
