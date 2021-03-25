@@ -3664,6 +3664,17 @@ too_many_positional(PyCodeObject *co, Py_ssize_t given, Py_ssize_t defcount,
     Py_DECREF(kwonly_sig);
 }
 
+// Sequence of arguments of a function arguments:
+// 1.positional arguments, no default value;
+// 2.positional arguments with default value;
+// 3.variable length arguments;
+// 4.keywordonly arguments, no default value;
+// 5.keywordonly arguments with default value;
+// 6.variable length keyworda arguments.
+// and there is a function contain above six type arguments:
+//   def foo_fn(r, m, h, l = 10, *args, k, u= 10, **kwargs):
+//      pass
+//
 /* This is gonna seem *real weird*, but if you put some other code between
    PyEval_EvalFrame() and _PyEval_EvalFrameDefault() you will need to adjust
    the test in the if statements in Misc/gdbinit (pystack and pystackv). */
@@ -3773,9 +3784,8 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
            normally interned this should almost always hit. */
         co_varnames = ((PyTupleObject *)(co->co_varnames))->ob_item;
         for (j = 0; j < total_args; j++) {
-            // Handle the argument that define as 'k = value' form,
-            // for example in 'def fn(a, b, c = 1, **kwargs)', this
-            // case handle argument 'c'.
+            // Goto comment of this function to understand 
+            // what's keywordonly arguments.
             PyObject *name = co_varnames[j];
             if (name == keyword) {
                 goto kw_found;
@@ -3784,9 +3794,8 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
 
         /* Slow fallback, just in case */
         for (j = 0; j < total_args; j++) {
-            // Handle the argument that in define as '**kwargs' form,
-            // for example in 'def fn(a, b, c = 1, **kwargs)', this
-            // case handle argument in '**kwargs'.
+            // Goto comment of this function to understand 
+            // what's variable length keyword arguments.
             PyObject *name = co_varnames[j];
             int cmp = PyObject_RichCompareBool(keyword, name, Py_EQ);
             if (cmp > 0) {
