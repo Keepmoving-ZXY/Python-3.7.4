@@ -414,12 +414,15 @@ _PyFunction_FastCallKeywords(PyObject *func, PyObject *const *stack,
                         func_name, co->co_argcount);
                 printf("[Notice] co_kwonlyargcount of function '%s' is %d.\n", 
                         func_name, co->co_kwonlyargcount);
+                printf("[Notice] nargs of function %s is %zu.\n", 
+                        func_name, nargs);
             }
             Py_XDECREF(temp);
         }
     }
     
-    // co->co_argcount is the number of total argument of a function.
+    // co->co_argcount is the number of positional argument of a function, 
+    // including that has default value.
     // co->co_kwonlyargcount is hard to understand, so let's see a example:
     //   def func(r, *b, h = 2):
     //      pass

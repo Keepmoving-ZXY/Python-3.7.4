@@ -3738,13 +3738,24 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
     }
 
     /* Copy positional arguments into local variables */
-    // n is number of positional arguments that passed in when run a function.
+    // The 'argcount' means number of below three type arguments:
+    //   1.positional arguments with no default value;
+    //   2.positional arguments with default value;
+    //   3.variable length positional arguments.
     if (argcount > co->co_argcount) {
+        // In this case, 'n' means the number of three 
+        // types' positional arguments.
         n = co->co_argcount;
     }
     else {
+        // In this case, 'n' means the number of two 
+        // types' positional arguments, don't include
+        // variable length positional arguments.
         n = argcount;
     }
+
+    // Notice that this loop may fill positional arguments that have 
+    // default variable but also passed in when run.
     for (i = 0; i < n; i++) {
         x = args[i];
         Py_INCREF(x);
@@ -3752,6 +3763,8 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
     }
 
     /* Pack other positional arguments into the *args argument */
+    // The 'total_args' means that number of positional argument and keyword 
+    // argument including arguments have default variable. 
     if (co->co_flags & CO_VARARGS) {
         u = PyTuple_New(argcount - n);
         if (u == NULL) {
@@ -3860,15 +3873,17 @@ _PyEval_EvalCodeWithName(PyObject *_co, PyObject *globals, PyObject *locals,
         // argument that have default value also passed, otherwise no positional 
         // arguments that have default value passed in.
         if (n > m)
-            // Part or all positional arguments 
-            // that have default value passed in. 
+            // Part or all positional arguments that have 
+            // default value passed in. 
             i = n - m;
         else
-            // No position arguments that 
-            // have default value passed in.
+            // No position arguments that have default value 
+            // passed in.
             i = 0;
         for (; i < defcount; i++) {
             if (GETLOCAL(m+i) == NULL) {
+                // Some of argument that have default variable has passed 
+                // in when run function, so skip them.
                 PyObject *def = defs[i];
                 Py_INCREF(def);
                 SETLOCAL(m+i, def);
