@@ -433,9 +433,14 @@ _PyFunction_FastCallKeywords(PyObject *func, PyObject *const *stack,
     if (co->co_kwonlyargcount == 0 && nkwargs == 0 &&
         (co->co_flags & ~PyCF_MASK) == (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE))
     {
+        // Run to this means that the function that's running:
+        //   1.has no keywordonly argument;
+        //   2.no variable length keyword argument provided;
+        //   3.function is not a C function;
+        //   4.function has no free variable.
         if (argdefs == NULL && co->co_argcount == nargs) {
-            // No default argument and all argument provided, object 
-            // in 'stack' is the all arguments of this function.
+            // Then no default positional arguments and all required 
+            // positional argument is provided.
             return function_code_fastcall(co, stack, nargs, globals);
         }
         else if (nargs == 0 && argdefs != NULL
@@ -659,7 +664,6 @@ _PyMethodDef_RawFastCallKeywords(PyMethodDef *method, PyObject *self,
     /* kwnames must only contains str strings, no subclass, and all keys must
        be unique */
     
-    // printf("method->ml_name is %s\n", method->ml_name);
     PyCFunction meth = method->ml_meth;
     int flags = method->ml_flags & ~(METH_CLASS | METH_STATIC | METH_COEXIST);
     Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
