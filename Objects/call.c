@@ -137,6 +137,7 @@ PyObject *
 _PyObject_FastCallKeywords(PyObject *callable, PyObject *const *stack, Py_ssize_t nargs,
                            PyObject *kwnames)
 {
+    // The 'stack' saves all positional arguments and keyword arguments.
     /* _PyObject_FastCallKeywords() must not be called with an exception set,
        because it can clear it (directly or indirectly) and so the
        caller loses its exception */
@@ -158,7 +159,7 @@ _PyObject_FastCallKeywords(PyObject *callable, PyObject *const *stack, Py_ssize_
     else {
         /* Slow-path: build a temporary tuple for positional arguments and a
            temporary dictionary for keyword arguments (if any) */
-
+        // The object is callable.
         ternaryfunc call;
         PyObject *argstuple;
         PyObject *kwdict, *result;
@@ -319,6 +320,12 @@ _PyFunction_FastCallDict(PyObject *func, PyObject *const *args, Py_ssize_t nargs
     {
         /* Fast paths */
         if (argdefs == NULL && co->co_argcount == nargs) {
+            // The running function has:
+            // 1. no keywordonly arguments;
+            // 2. no varaible length keyword arguments;
+            // 3. not a C function(no code object assign to this function);
+            // 4. all positional arguments have no default value;
+            // 5. all positional arguments' value passed in.
             return function_code_fastcall(co, args, nargs, globals);
         }
         else if (nargs == 0 && argdefs != NULL
@@ -512,8 +519,6 @@ _PyMethodDef_RawFastCallDict(PyMethodDef *method, PyObject *self,
     assert(nargs == 0 || args != NULL);
     assert(kwargs == NULL || PyDict_Check(kwargs));
     
-    // printf("method is %s\n", method->ml_name);
-
     PyCFunction meth = method->ml_meth;
     int flags = method->ml_flags & ~(METH_CLASS | METH_STATIC | METH_COEXIST);
     PyObject *result = NULL;
