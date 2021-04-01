@@ -998,6 +998,7 @@ _PyObject_CallFunctionVa(PyObject *callable, const char *format,
     }
 
     if (is_size_t) {
+        // TODO: Seems interesting, have a full understand it.
         stack = _Py_VaBuildStack_SizeT(small_stack, small_stack_len,
                                        format, va, &nargs);
     }

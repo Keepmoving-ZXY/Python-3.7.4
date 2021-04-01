@@ -574,7 +574,9 @@ va_build_stack(PyObject **small_stack, Py_ssize_t small_stack_len,
     va_list lva;
     PyObject **stack;
     int res;
-
+    
+    // For example, format is '[(siis)]', and countformat will return 1, 
+    // because arguments that indicated by format is just a list;
     n = countformat(format, '\0');
     if (n < 0) {
         *p_nargs = 0;
