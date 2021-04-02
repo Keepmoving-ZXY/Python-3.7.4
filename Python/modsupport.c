@@ -279,6 +279,22 @@ do_mktuple(const char **p_format, va_list *p_va, char endchar, Py_ssize_t n, int
     return v;
 }
 
+// Have a detailed look at how do_mkvalue process format string '[(sis)]':
+// index: 0 1 2 3 4 5 6 7
+// value: [ ( s i s ) ] \0
+// so the process detail is:
+//   |do_mkvalue, idx 0
+//   |  |do_mklist, idx 1
+//   |  |  |do_mktuple, idx 2
+//   |  |  |  |do_mkvalue, idx 3, process 's'
+//   |  |  |  |do_mkvalue, idx 4, process 'i'
+//   |  |  |  |do_mkvalue, idx 5, process 's'
+//   |  |  |  |return
+//   |  |  |set idx to 6
+//   |  |  |return
+//   |  |set idx to 7
+//   |  |return
+//   |return
 static PyObject *
 do_mkvalue(const char **p_format, va_list *p_va, int flags)
 {
@@ -575,8 +591,9 @@ va_build_stack(PyObject **small_stack, Py_ssize_t small_stack_len,
     PyObject **stack;
     int res;
     
-    // For example, format is '[(siis)]', and countformat will return 1, 
-    // because arguments that indicated by format is just a list;
+    // Return the number of arguments that format string represent, notice that 
+    // '[(siis)]' is a simple argument, the countformat support the recoginze of 
+    // list, tuple, dict, then think them as a single argument.
     n = countformat(format, '\0');
     if (n < 0) {
         *p_nargs = 0;
