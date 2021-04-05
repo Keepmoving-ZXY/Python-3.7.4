@@ -3664,13 +3664,18 @@ too_many_positional(PyCodeObject *co, Py_ssize_t given, Py_ssize_t defcount,
     Py_DECREF(kwonly_sig);
 }
 
+// Layout of fastlocal:
+// |         'total_args' python object       | one python object | one python object |
+// |<---------------------------------------->|<----------------->|<----------------->|
+// |Positional arguments and keyword arguments|var positional args| var keyword args  |
+
 // Sequence of arguments of a function arguments:
 // 1.positional arguments, no default value;
 // 2.positional arguments with default value;
 // 3.variable length arguments;
 // 4.keywordonly arguments, no default value;
 // 5.keywordonly arguments with default value;
-// 6.variable length keyworda arguments.
+// 6.variable length keyword arguments.
 // and there is a function contain above six type arguments:
 //   def foo_fn(r, m, h, l = 10, *args, k, u= 10, **kwargs):
 //      pass
