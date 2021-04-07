@@ -999,8 +999,8 @@ def _find_and_load_unlocked(name, import_):
     # return a ModuleSpec instance with loader is 'class FrozenImporter'.
     spec = _find_spec(name, path)
 
-    msg = '[_find_and_load_unlocked] name {}, spec {}'.format(name, spec)
-    print(msg, file=sys.stderr)
+    # msg = '[_find_and_load_unlocked] name {}, spec {}'.format(name, spec)
+    # print(msg, file=sys.stderr)
 
     if spec is None:
         raise ModuleNotFoundError(_ERR_MSG.format(name), name=name)
@@ -1073,9 +1073,9 @@ def _handle_fromlist(module, fromlist, import_, *, recursive=False):
     # The hell that is fromlist ...
     # If a package was imported, try to import stuff from fromlist.
     
-    msg = '[_handle_fromlist] from_list {}, module {}, has \'__path__\' attr {}'.format(
-            fromlist, module, hasattr(module, '__path__'))
-    print(msg, file=sys.stderr)
+    # msg = '[_handle_fromlist] from_list {}, module {}, has \'__path__\' attr {}'.format(
+    #        fromlist, module, hasattr(module, '__path__'))
+    # print(msg, file=sys.stderr)
     
     if hasattr(module, '__path__'):
         for x in fromlist:
@@ -1093,8 +1093,8 @@ def _handle_fromlist(module, fromlist, import_, *, recursive=False):
             elif not hasattr(module, x):
                 from_name = '{}.{}'.format(module.__name__, x)
                 
-                msg = '[_handle_fromlist] from_name is {}'.format(from_name)
-                print(msg, file=sys.stderr)
+                # msg = '[_handle_fromlist] from_name is {}'.format(from_name)
+                # print(msg, file=sys.stderr)
                 
                 try:
                     _call_with_frames_removed(import_, from_name)
