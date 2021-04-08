@@ -2203,6 +2203,13 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
 
             TARGET(LOAD_CLOSURE)
             {
+                if (NULL != getenv("PYTHON_DEBUG")) {
+                    PyObject* temp = NULL;
+                    temp = PyUnicode_AsASCIIString(co->co_name);
+                    printf("[%s, LOAD_CLOSURE] addr of freevars is 0x%lx, oparg is %u\n", 
+                            PyBytes_AsString(temp), (uint64_t)freevars, oparg);
+                }
+
                 PyObject* cell = freevars[oparg];
                 Py_INCREF(cell);
                 PUSH(cell);
@@ -3265,10 +3272,6 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
 
                 if (oparg & 0x08) {
                     // Setup closure variable to function.
-                    if (NULL != getenv("PYTHON_DEBUG")) {
-                        printf("[MAKE_FUNCTION] setup closure variable.\n");
-                    }
-
                     assert(PyTuple_CheckExact(TOP()));
                     func->func_closure = POP();
                 }
@@ -3978,8 +3981,17 @@ _PyEval_EvalCodeWithName(PyObject* _co, PyObject* globals, PyObject* locals,
 
     /* Allocate and initialize storage for cell vars, and copy free
        vars into frame. */
+    if (NULL != getenv("PYTHON_DEBUG") && PyTuple_GET_SIZE(co->co_cellvars)) {
+        PyObject* temp = NULL;
+        temp = PyUnicode_AsASCIIString(co->co_name);
+        printf("[%s] number of cell var is %lu\n", PyBytes_AsString(temp), 
+                PyTuple_GET_SIZE(co->co_cellvars));
+        printf("[%s] alloc and init cell var, addr of freevars is 0x%lx\n", 
+                PyBytes_AsString(temp), (uint64_t)(&(GETLOCAL(co->co_nlocals))));
+    }
+
     for (i = 0; i < PyTuple_GET_SIZE(co->co_cellvars); ++i) {
-        PyObject* c;
+            PyObject* c;
         Py_ssize_t arg;
         /* Possibly account for the cell variable being an argument. */
         if (co->co_cell2arg != NULL && (arg = co->co_cell2arg[i]) != CO_CELL_NOT_AN_ARG) {
@@ -3997,13 +4009,16 @@ _PyEval_EvalCodeWithName(PyObject* _co, PyObject* globals, PyObject* locals,
     }
 
     /* Copy closure variables to free variables */
-    for (i = 0; i < PyTuple_GET_SIZE(co->co_freevars); ++i) {
-        if (NULL != getenv("PYTHON_DEBUG")) {
-            PyObject* temp = NULL;
-            temp = PyUnicode_AsASCIIString(co->co_name);
-            printf("[%s] copy closure variable to freevars.\n", PyBytes_AsString(temp));
-        }
+    if (NULL != getenv("PYTHON_DEBUG") && PyTuple_GET_SIZE(co->co_freevars)) {
+        PyObject* temp = NULL;
+        temp = PyUnicode_AsASCIIString(co->co_name);
+        printf("[%s] number of free var is %lu.\n", PyBytes_AsString(temp),
+                PyTuple_GET_SIZE(co->co_freevars));
+        printf("[%s] copy closure variable to freevars.\n", 
+                PyBytes_AsString(temp));
+    }
 
+    for (i = 0; i < PyTuple_GET_SIZE(co->co_freevars); ++i) {
         PyObject* o = PyTuple_GET_ITEM(closure, i);
         Py_INCREF(o);
         freevars[PyTuple_GET_SIZE(co->co_cellvars) + i] = o;
