@@ -2203,13 +2203,8 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
 
             TARGET(LOAD_CLOSURE)
             {
-                if (NULL != getenv("PYTHON_DEBUG")) {
-                    PyObject* temp = NULL;
-                    temp = PyUnicode_AsASCIIString(co->co_name);
-                    printf("[%s, LOAD_CLOSURE] addr of freevars is 0x%lx, oparg is %u\n", 
-                            PyBytes_AsString(temp), (uint64_t)freevars, oparg);
-                }
-
+                // Notice 'oparg' is index of 'freevars', see layout 
+                // of fastlocals in this file.
                 PyObject* cell = freevars[oparg];
                 Py_INCREF(cell);
                 PUSH(cell);
@@ -2251,6 +2246,8 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
 
             TARGET(LOAD_DEREF)
             {
+                // Notice value of 'oparg' is the index of free vars in 'freevars', 
+                // see layout of fastlocal in this file.
                 PyObject* cell = freevars[oparg];
                 PyObject* value = PyCell_GET(cell);
                 if (value == NULL) {
@@ -3724,10 +3721,11 @@ too_many_positional(PyCodeObject* co, Py_ssize_t given, Py_ssize_t defcount,
 }
 
 // Layout of fastlocal:
-// |         'total_args' python object       | one python object | one python object |
-// |<---------------------------------------->|<----------------->|<----------------->|
-// |Positional arguments and keyword arguments|var positional args| var keyword args  |
-
+// |         'total_args' python object       | one python object | one python object | some cell object | some cell object |
+// |<---------------------------------------->|<----------------->|<----------------->|<---------------->|<---------------->|
+// |Positional arguments and keyword arguments|var positional args| var keyword args  |     cell vars    |     free vars    |
+// |<---------------------------------- localvars ----------------------------------->|<--------------- freevars ---------->|
+//
 // Sequence of arguments of a function arguments:
 // 1.positional arguments, no default value;
 // 2.positional arguments with default value;
@@ -3978,18 +3976,25 @@ _PyEval_EvalCodeWithName(PyObject* _co, PyObject* globals, PyObject* locals,
             goto fail;
         }
     }
-
+    
+    // What's the difference of cell vars and free vars?
+    // Python support that define a function inside a function, and the inner 
+    // function directly use a variable from outer function(no a argument of 
+    // the inner function passed in when call), such as:
+    //
+    //   def adder(n):
+    //      def handler(m):
+    //          return m + n
+    //      return handler
+    //
+    // The variable belong to outer function but also directly used by inner 
+    // function is called 'cell vars', so the cell vars belong to a function 
+    // that directly provide variable to inner function. And for the inner
+    // function the variable it directly used but belong to outer function
+    // is called free vars.
+    
     /* Allocate and initialize storage for cell vars, and copy free
        vars into frame. */
-    if (NULL != getenv("PYTHON_DEBUG") && PyTuple_GET_SIZE(co->co_cellvars)) {
-        PyObject* temp = NULL;
-        temp = PyUnicode_AsASCIIString(co->co_name);
-        printf("[%s] number of cell var is %lu\n", PyBytes_AsString(temp), 
-                PyTuple_GET_SIZE(co->co_cellvars));
-        printf("[%s] alloc and init cell var, addr of freevars is 0x%lx\n", 
-                PyBytes_AsString(temp), (uint64_t)(&(GETLOCAL(co->co_nlocals))));
-    }
-
     for (i = 0; i < PyTuple_GET_SIZE(co->co_cellvars); ++i) {
             PyObject* c;
         Py_ssize_t arg;
@@ -4005,22 +4010,17 @@ _PyEval_EvalCodeWithName(PyObject* _co, PyObject* globals, PyObject* locals,
         }
         if (c == NULL)
             goto fail;
+        // cell vars is part of fastlocals, located 
+        // in the position after varkwargs.
         SETLOCAL(co->co_nlocals + i, c);
     }
 
     /* Copy closure variables to free variables */
-    if (NULL != getenv("PYTHON_DEBUG") && PyTuple_GET_SIZE(co->co_freevars)) {
-        PyObject* temp = NULL;
-        temp = PyUnicode_AsASCIIString(co->co_name);
-        printf("[%s] number of free var is %lu.\n", PyBytes_AsString(temp),
-                PyTuple_GET_SIZE(co->co_freevars));
-        printf("[%s] copy closure variable to freevars.\n", 
-                PyBytes_AsString(temp));
-    }
-
     for (i = 0; i < PyTuple_GET_SIZE(co->co_freevars); ++i) {
         PyObject* o = PyTuple_GET_ITEM(closure, i);
         Py_INCREF(o);
+        // freevars is a part of fastlocals, located in the 
+        // position after free vars.
         freevars[PyTuple_GET_SIZE(co->co_cellvars) + i] = o;
     }
 
