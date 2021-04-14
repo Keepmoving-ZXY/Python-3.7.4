@@ -139,22 +139,22 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
     }
     func = args[0];   /* Better be callable */
     
-    // show func name:
-    Py_ssize_t size = 0;
-    PyObject *f_name = (((PyFunctionObject *)func)->func_name);
-    wchar_t *wstr = PyUnicode_AsWideCharString(f_name, &size);
-    PyMem_Free(wstr);
-
     if (!PyFunction_Check(func)) {
         PyErr_SetString(PyExc_TypeError,
                         "__build_class__: func must be a function");
         return NULL;
     }
 
+    // For code:
+    //   class Dog:
+    //      def yelp(self):
+    //          print('woof')
+    //          
+    // When run here, the objects in args is:
+    // top - 2: python cfunction 'builtin__build_class__',
+    // top - 1: python function 'dog',
+    // top - 0: function name, a python unicode object.
     name = args[1];
-    wstr = PyUnicode_AsWideCharString(name, &size);
-    PyMem_Free(wstr);
-
     if (!PyUnicode_Check(name)) {
         PyErr_SetString(PyExc_TypeError,
                         "__build_class__: name is not a string");
@@ -163,7 +163,27 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
     orig_bases = _PyStack_AsTupleSlice(args, nargs, 2, nargs);
     if (orig_bases == NULL)
         return NULL;
+    
+    if (NULL != getenv("PYTHON_DEBUG")) {
+        PyObject *tmp = NULL;
+        const char *f_name = NULL;
+        const char *target = NULL;
+        tmp = PyUnicode_AsASCIIString(name);
+        f_name = PyBytes_AsString(tmp);
+        printf("[__build_class__] function name is %s.\n", f_name);
 
+        target = getenv("STOP_FUNC");
+        if (NULL != target) {
+            size_t a = strlen(f_name);
+            size_t b = strlen(target);
+            int ret = strncmp(f_name, target, a > b ? b : a);
+            if (0 == ret) {
+                printf("[__build_class__] code reach target function %s.\n", f_name);
+            }
+        }
+    }
+    
+    // TODO(zxy): Ignore this function temporarily.
     bases = update_bases(orig_bases, args + 2, nargs - 2);
     if (bases == NULL) {
         Py_DECREF(orig_bases);

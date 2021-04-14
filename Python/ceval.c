@@ -4672,6 +4672,7 @@ PyEval_GetFuncDesc(PyObject* func)
 Py_LOCAL_INLINE(PyObject*) _Py_HOT_FUNCTION
     call_function(PyObject*** pp_stack, Py_ssize_t oparg, PyObject* kwnames)
 {
+    // Argument 'oparg' means number of arguments in stack.
     PyObject** pfunc = (*pp_stack) - oparg - 1;
     PyObject* func = *pfunc;
     PyObject *x, *w;
