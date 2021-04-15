@@ -255,6 +255,7 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
     }
     else {
         PyObject *pargs[2] = {name, bases};
+        // Call __prepare__, this function enable custom local namespace.
         ns = _PyObject_FastCallDict(prep, pargs, 2, mkw);
         Py_DECREF(prep);
     }
@@ -271,6 +272,9 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
                      Py_TYPE(ns)->tp_name);
         goto error;
     }
+    
+    // Run bytecode of a class, setup '__module__', '__qualname__', 
+    // class method(function object) and so on to local namespace.
     cell = PyEval_EvalCodeEx(PyFunction_GET_CODE(func), PyFunction_GET_GLOBALS(func), ns,
                              NULL, 0, NULL, 0, NULL, 0, NULL,
                              PyFunction_GET_CLOSURE(func));
@@ -281,6 +285,7 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
             }
         }
         PyObject *margs[3] = {name, bases, ns};
+        // Build new class instance.
         cls = _PyObject_FastCallDict(meta, margs, 3, mkw);
         if (cls != NULL && PyType_Check(cls) && PyCell_Check(cell)) {
             PyObject *cell_cls = PyCell_GET(cell);
