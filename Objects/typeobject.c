@@ -1405,6 +1405,7 @@ type_is_subtype_base_chain(PyTypeObject *a, PyTypeObject *b)
     return (b == &PyBaseObject_Type);
 }
 
+// Check if a is a subtype of b, which means that b is subtype of a.
 int
 PyType_IsSubtype(PyTypeObject *a, PyTypeObject *b)
 {
@@ -2039,6 +2040,7 @@ best_base(PyObject *bases)
     winner = NULL;
     for (i = 0; i < n; i++) {
         base_proto = PyTuple_GET_ITEM(bases, i);
+        // Ensure that current type 'base' is a subclass of 'type'.
         if (!PyType_Check(base_proto)) {
             PyErr_SetString(
                 PyExc_TypeError,
@@ -2050,12 +2052,14 @@ best_base(PyObject *bases)
             if (PyType_Ready(base_i) < 0)
                 return NULL;
         }
+        // Ensure that type 'base_i' can be base type of another type.
         if (!PyType_HasFeature(base_i, Py_TPFLAGS_BASETYPE)) {
             PyErr_Format(PyExc_TypeError,
                          "type '%.100s' is not an acceptable base type",
                          base_i->tp_name);
             return NULL;
         }
+        // 'candidate' is 'base_i' itself or a base type of 'base_i'.
         candidate = solid_base(base_i);
         if (winner == NULL) {
             winner = candidate;
@@ -2410,7 +2414,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     /* Check arguments: (name, bases, dict) */
     if (!PyArg_ParseTuple(args, "UO!O!:type.__new__", &name, &PyTuple_Type,
                           &bases, &PyDict_Type, &orig_dict))
-        return NULL;
+       return NULL;
 
     /* Adjust for empty tuple bases */
     nbases = PyTuple_GET_SIZE(bases);
