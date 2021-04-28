@@ -933,6 +933,10 @@ static PyObject *
 type_call(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *obj;
+    
+    if (NULL != getenv("PYTHON_DEBUG")) {
+        printf("[type_call] type name is %s.\n", type->tp_name);
+    }
 
     if (type->tp_new == NULL) {
         PyErr_Format(PyExc_TypeError,
@@ -2361,7 +2365,7 @@ _PyType_CalculateMetaclass(PyTypeObject *metatype, PyObject *bases)
                         "metaclass conflict: "
                         "the metaclass of a derived class "
                         "must be a (non-strict) subclass "
-                        "of the metaclasses of all its bases");
+                        "of the metaclasses of all its bases") ;
         return NULL;
     }
     return winner;
@@ -2415,6 +2419,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     /* Adjust for empty tuple bases */
     nbases = PyTuple_GET_SIZE(bases);
     if (nbases == 0) {
+        // Default base is 'object' in python code.
         base = &PyBaseObject_Type;
         bases = PyTuple_Pack(1, base);
         if (bases == NULL)
@@ -2496,6 +2501,8 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         /* Are slots allowed? */
         nslots = PyTuple_GET_SIZE(slots);
         if (nslots > 0 && base->tp_itemsize != 0) {
+            // TODO: Why __slot__ is not compatible with the base 
+            //       class which length is not a fixed value.
             PyErr_Format(PyExc_TypeError,
                          "nonempty __slots__ "
                          "not supported for subtype of '%s'",
