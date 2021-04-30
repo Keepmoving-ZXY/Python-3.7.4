@@ -2659,6 +2659,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         if (tmp != NULL) {
             tmp = _PyDict_GetItemId(tmp, &PyId___name__);
             if (tmp != NULL) {
+                // Set class's __module__ to __name__ of outer namespace.
                 if (_PyDict_SetItemId(dict, &PyId___module__,
                                       tmp) < 0)
                     goto error;
@@ -2704,6 +2705,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                 PyErr_NoMemory();
                 goto error;
             }
+            // Copy doc string from __dict__ to tp_doc field.
             memcpy(tp_doc, doc_str, len + 1);
             type->tp_doc = tp_doc;
         }
@@ -2725,6 +2727,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
 
     /* Special-case __init_subclass__ and __class_getitem__:
        if they are plain functions, make them classmethods */
+    // See PEP 487 for detail content for __init__subclass__.
     tmp = _PyDict_GetItemId(dict, &PyId___init_subclass__);
     if (tmp != NULL && PyFunction_Check(tmp)) {
         tmp = PyClassMethod_New(tmp);
@@ -2736,7 +2739,8 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         }
         Py_DECREF(tmp);
     }
-
+    
+    // Handle __class__getitem__.
     tmp = _PyDict_GetItemId(dict, &PyId___class_getitem__);
     if (tmp != NULL && PyFunction_Check(tmp)) {
         tmp = PyClassMethod_New(tmp);
@@ -2752,6 +2756,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     /* Add descriptors for custom slots from __slots__, or for __dict__ */
     mp = PyHeapType_GET_MEMBERS(et);
     slotoffset = base->tp_basicsize;
+    // TODO: How python interpreter know the size of this type, make sense it.
     if (et->ht_slots != NULL) {
         for (i = 0; i < nslots; i++, mp++) {
             mp->name = PyUnicode_AsUTF8(
@@ -2760,6 +2765,8 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                 goto error;
             mp->type = T_OBJECT_EX;
             mp->offset = slotoffset;
+            // TODO: It seems that mp->ml_meth is empty until now, 
+            //       find out where the mp->ml_meth fills in. 
 
             /* __dict__ and __weakref__ are already filtered out */
             assert(strcmp(mp->name, "__dict__") != 0);
@@ -2770,6 +2777,8 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     }
     if (add_dict) {
         if (base->tp_itemsize)
+            // When tp_dictoffset is negative value, this means that 
+            // the dictionary is at very end of the type structure.
             type->tp_dictoffset = -(long)sizeof(PyObject *);
         else
             type->tp_dictoffset = slotoffset;
@@ -2804,6 +2813,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
 
     /* Enable GC unless this class is not adding new instance variables and
        the base class did not use GC. */
+    // TODO: I don't know why, make sense it.
     if ((base->tp_flags & Py_TPFLAGS_HAVE_GC) ||
         type->tp_basicsize > base->tp_basicsize)
         type->tp_flags |= Py_TPFLAGS_HAVE_GC;
@@ -4812,6 +4822,7 @@ add_methods(PyTypeObject *type, PyMethodDef *meth)
             !(meth->ml_flags & METH_COEXIST))
                 continue;
         if (meth->ml_flags & METH_CLASS) {
+            // The method is a class methond.
             if (meth->ml_flags & METH_STATIC) {
                 PyErr_SetString(PyExc_ValueError,
                      "method cannot be both class and static");
@@ -4820,7 +4831,8 @@ add_methods(PyTypeObject *type, PyMethodDef *meth)
             descr = PyDescr_NewClassMethod(type, meth);
         }
         else if (meth->ml_flags & METH_STATIC) {
-          PyObject *cfunc = PyCFunction_NewEx(meth, (PyObject*)type, NULL);
+            // The method is a static method.
+            PyObject *cfunc = PyCFunction_NewEx(meth, (PyObject*)type, NULL);
             if (cfunc == NULL)
                 return -1;
             descr = PyStaticMethod_New(cfunc);
@@ -4828,6 +4840,7 @@ add_methods(PyTypeObject *type, PyMethodDef *meth)
             Py_DECREF(cfunc);
         }
         else {
+            // TODO: I don't familiar with method descriptor, make sense it.
             descr = PyDescr_NewMethod(type, meth);
         }
         if (descr == NULL)
@@ -5194,6 +5207,7 @@ PyType_Ready(PyTypeObject *type)
        not NULL (it's initialized to &PyType_Type).      But coverity doesn't
        know that. */
     if (Py_TYPE(type) == NULL && base != NULL)
+        // Initialize ob_type field. 
         Py_TYPE(type) = Py_TYPE(base);
 
     /* Initialize tp_bases */
