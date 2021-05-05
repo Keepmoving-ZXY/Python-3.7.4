@@ -1591,7 +1591,7 @@ call_maybe(PyObject *obj, _Py_Identifier *name,
  */
 
 static int
-tail_contains(PyObject *tuple, int whence, PyObject *o)
+tail_contains(PyObjectch base class *tuple, int whence, PyObject *o)
 {
     Py_ssize_t j, size;
     size = PyTuple_GET_SIZE(tuple);
@@ -1702,6 +1702,19 @@ consistent method resolution\norder (MRO) for bases");
     Py_DECREF(set);
 }
 
+// A example that cause pmerge return an error:
+//   class X(object):
+//      pass
+//   class Y(object):
+//      pass
+//   class A(X,Y):
+//      pass
+//   class B(Y,X):
+//      pass
+//   class T(A,B):
+//      pass
+//   In the mro of A, X is earilier that Y, but in the mro of B,
+//   Y is earilier than X, which is a conflict.
 static int
 pmerge(PyObject *acc, PyObject **to_merge, Py_ssize_t to_merge_size)
 {
