@@ -4953,7 +4953,9 @@ inherit_special(PyTypeObject *type, PyTypeObject *base)
 #undef COPYVAL
 #define COPYVAL(SLOT) \
     if (type->SLOT == 0) type->SLOT = base->SLOT
-
+    
+    // TODO: Why type's tp_itemsize, tp_weaklistoffset, 
+    //       tp_dictoffset must be the same as it's base.
     COPYVAL(tp_itemsize);
     COPYVAL(tp_weaklistoffset);
     COPYVAL(tp_dictoffset);
