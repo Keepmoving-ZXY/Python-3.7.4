@@ -2067,6 +2067,7 @@ best_base(PyObject *bases)
             if (PyType_Ready(base_i) < 0)
                 return NULL;
         }
+        // Ensure this base enable subclass.
         if (!PyType_HasFeature(base_i, Py_TPFLAGS_BASETYPE)) {
             PyErr_Format(PyExc_TypeError,
                          "type '%.100s' is not an acceptable base type",
@@ -2121,6 +2122,7 @@ extra_ivars(PyTypeObject *type, PyTypeObject *base)
     return t_size != b_size;
 }
 
+// TODO: Make sure the meaning of 'solid_base'.
 static PyTypeObject *
 solid_base(PyTypeObject *type)
 {
@@ -2524,6 +2526,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         }
 
         /* Check for valid slot names and two special cases */
+        // Code block A: the block of code seem be related to Code Block B. 
         for (i = 0; i < nslots; i++) {
             PyObject *tmp = PyTuple_GET_ITEM(slots, i);
             if (!valid_identifier(tmp))
@@ -2531,6 +2534,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
             assert(PyUnicode_Check(tmp));
             if (_PyUnicode_EqualToASCIIId(tmp, &PyId___dict__)) {
                 if (!may_add_dict || add_dict) {
+                    // base type has __dict__.
                     PyErr_SetString(PyExc_TypeError,
                         "__dict__ slot disallowed: "
                         "we already got one");
@@ -2540,6 +2544,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
             }
             if (_PyUnicode_EqualToASCIIString(tmp, "__weakref__")) {
                 if (!may_add_weak || add_weak) {
+                    // base type has __weakref__.
                     PyErr_SetString(PyExc_TypeError,
                         "__weakref__ slot disallowed: "
                         "either we already got one, "
@@ -2563,6 +2568,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                  _PyUnicode_EqualToASCIIId(tmp, &PyId___dict__)) ||
                 (add_weak &&
                  _PyUnicode_EqualToASCIIString(tmp, "__weakref__")))
+                // Skip __dict__ and __weakref__.
                 continue;
             tmp =_Py_Mangle(name, tmp);
             if (!tmp) {
@@ -2576,6 +2582,9 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                    below so won't act as class variables. */
                 if (!_PyUnicode_EqualToASCIIId(tmp, &PyId___qualname__) &&
                     !_PyUnicode_EqualToASCIIId(tmp, &PyId___classcell__)) {
+                    // It seems that at this point, value of 'tmp' must be 
+                    // both of __qualname__, __classcell__, I don't know why.
+                    // TODO: make sense it.
                     PyErr_Format(PyExc_ValueError,
                                  "%R in __slots__ conflicts with class variable",
                                  tmp);
@@ -2598,6 +2607,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
             goto error;
 
         /* Secondary bases may provide weakrefs or dict */
+        // Code Block B: this code block seems be related Code Block A.
         if (nbases > 1 &&
             ((may_add_dict && !add_dict) ||
              (may_add_weak && !add_weak))) {
@@ -2769,7 +2779,6 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     /* Add descriptors for custom slots from __slots__, or for __dict__ */
     mp = PyHeapType_GET_MEMBERS(et);
     slotoffset = base->tp_basicsize;
-    // TODO: How python interpreter know the size of this type, make sense it.
     if (et->ht_slots != NULL) {
         for (i = 0; i < nslots; i++, mp++) {
             mp->name = PyUnicode_AsUTF8(
