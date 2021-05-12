@@ -4862,7 +4862,6 @@ add_methods(PyTypeObject *type, PyMethodDef *meth)
             Py_DECREF(cfunc);
         }
         else {
-            // TODO: I don't familiar with method descriptor, make sense it.
             descr = PyDescr_NewMethod(type, meth);
         }
         if (descr == NULL)
@@ -7131,6 +7130,8 @@ resolve_slotdups(PyTypeObject *type, PyObject *name)
    interests, and then stores a generic wrapper or a specific function into
    the slot.)  Return a pointer to the next slotdef with a different offset,
    because that's convenient  for fixup_slot_dispatchers(). */
+// This function is hard to understand, TODO: make sense it, use gdb to have
+// a look how this function run?
 static slotdef *
 update_one_slot(PyTypeObject *type, slotdef *p)
 {
