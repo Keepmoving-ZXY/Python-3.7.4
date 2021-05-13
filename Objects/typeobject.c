@@ -963,6 +963,7 @@ type_call(PyTypeObject *type, PyObject *args, PyObject *kwds)
         PyTuple_Check(args) && PyTuple_GET_SIZE(args) == 1 &&
         (kwds == NULL ||
          (PyDict_Check(kwds) && PyDict_GET_SIZE(kwds) == 0)))
+        // Just want to show type of a object when run into this branch.
         return obj;
 
     /* If the returned object is not an instance of type,
@@ -1591,7 +1592,7 @@ call_maybe(PyObject *obj, _Py_Identifier *name,
  */
 
 static int
-tail_contains(PyObjectch base class *tuple, int whence, PyObject *o)
+tail_contains(PyObject* tuple, int whence, PyObject *o)
 {
     Py_ssize_t j, size;
     size = PyTuple_GET_SIZE(tuple);
@@ -2878,7 +2879,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
 
     if (set_names(type) < 0)
         goto error;
-
+    
     if (init_subclass(type, kwds) < 0)
         goto error;
 
@@ -7383,7 +7384,6 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     if (func == NULL) {
         return -1;
     }
-
 
     result = _PyObject_FastCallDict(func, NULL, 0, kwds);
     Py_DECREF(func);
