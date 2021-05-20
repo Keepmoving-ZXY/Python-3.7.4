@@ -7457,7 +7457,8 @@ recurse_down_subclasses(PyTypeObject *type, PyObject *name,
    preferred.  In particular, because as_mapping comes before as_sequence,
    for a type that defines both mp_subscript and sq_item, mp_subscript
    wins.
-
+    
+   // TODO: understand it.
    This only adds new descriptors and doesn't overwrite entries in
    tp_dict that were previously defined.  The descriptors contain a
    reference to the C function they must call, so that it's safe if they
@@ -7477,15 +7478,39 @@ add_operators(PyTypeObject *type)
     PyObject *descr;
     void **ptr;
 
+    // Add to help understand this function.
+    int debug = 0;
+    
+    if (getenv("ADD_OPERATOR_DEBUG"))
+        debug = 1;
+
     init_slotdefs();
     for (p = slotdefs; p->name; p++) {
-        if (p->wrapper == NULL)
+        if (p->wrapper == NULL) {
+            if (debug) 
+                printf("[slot %s] Field wrapper of this slot is empty," 
+                        " skip it.\n", p->name);
             continue;
+        }
+
         ptr = slotptr(type, p->offset);
-        if (!ptr || !*ptr)
+        if (!ptr || !*ptr) {
+            if (debug)
+                printf("[slot %s] Pointer to this slot in object %lx is empty,"
+                        " skip it.\n", p->name, (uint64_t)type);
             continue;
-        if (PyDict_GetItem(dict, p->name_strobj))
+        }
+
+        if (PyDict_GetItem(dict, p->name_strobj)) {
+            if (debug)
+                printf("[slot %s] the dict of object %lx is not empty, "
+                        "skip it.\n", p->name, (uint64_t)type);
             continue;
+        }
+        
+        if (debug)
+            printf("[slot %s] a needed check of this slot pass.\n", p->name);
+
         if (*ptr == (void *)PyObject_HashNotImplemented) {
             /* Classes may prevent the inheritance of the tp_hash
                slot by storing PyObject_HashNotImplemented in it. Make it
