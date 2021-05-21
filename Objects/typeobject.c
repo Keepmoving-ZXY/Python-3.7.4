@@ -5026,6 +5026,15 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
 #define COPYSEQ(SLOT) COPYSLOT(tp_as_sequence->SLOT)
 #define COPYMAP(SLOT) COPYSLOT(tp_as_mapping->SLOT)
 #define COPYBUF(SLOT) COPYSLOT(tp_as_buffer->SLOT)
+    // python code to help understand code in this function:
+    //  class A(int):
+    //      pass
+    //  class C(A):
+    //      pass
+    int debug = 0;
+    if (!strcmp(type->tp_name , "C")) {
+        debug = 1;
+    }
 
     /* This won't inherit indirect slots (from tp_as_number etc.)
        if type doesn't provide the space. */
@@ -5034,6 +5043,14 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
         basebase = base->tp_base;
         if (basebase->tp_as_number == NULL)
             basebase = NULL;
+        // For example, the base of bool is long, so bool type 
+        // can do some number operation due to these code.
+        if (debug) {
+            printf("[type '%s'] nb_add of base '%s' is 0x%lx.\n", 
+                    type->tp_name, base->tp_name, 
+                    (uint64_t)(base->tp_as_number->nb_add));
+        }
+
         COPYNUM(nb_add);
         COPYNUM(nb_subtract);
         COPYNUM(nb_multiply);
@@ -5284,6 +5301,23 @@ PyType_Ready(PyTypeObject *type)
     assert(bases != NULL);
     assert(PyTuple_Check(bases));
     n = PyTuple_GET_SIZE(bases);
+
+    // These days I have very confused about this loop, it seems that 
+    // 'inherit_slots' maybe change some field in 'type', such as 'nb_add'
+    // in 'tp_as_number' of 'type'. And what I concern is that this field
+    // maybe overwrite many times along with the run of for loop. And now
+    // I think this case can occurs but field maybe overwrite to the same 
+    // value, for example:
+    //  class A(int):
+    //      pass
+    //  class C(A):
+    //      pass
+    //  When construct type 'C', the type in bases is: A, long, type, and the
+    //  nb_add will assign value two times, one for A and another for long.
+    if (!strcmp(type->tp_name, "C")) {
+        printf("Hint the construct of type C.\n");
+    }
+
     for (i = 1; i < n; i++) {
         PyObject *b = PyTuple_GET_ITEM(bases, i);
         if (PyType_Check(b))
