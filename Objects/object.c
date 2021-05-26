@@ -1735,9 +1735,13 @@ PyObject _Py_NotImplementedStruct = {
 void
 _Py_ReadyTypes(void)
 {
+    // 'PyBaseObject_Type' don't have base type, 
+    // and type is 'PyType_Type'.
     if (PyType_Ready(&PyBaseObject_Type) < 0)
         Py_FatalError("Can't initialize object type");
-
+    
+    // Base of 'PyType_Type' is 'PyType_Ready', 
+    // and type is itself.
     if (PyType_Ready(&PyType_Type) < 0)
         Py_FatalError("Can't initialize type type");
 

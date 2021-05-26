@@ -2063,7 +2063,12 @@ best_base(PyObject *bases)
                 "bases must be types");
             return NULL;
         }
+
         base_i = (PyTypeObject *)base_proto;
+        if (!strcmp(base_i->tp_name, "A")) {
+            printf("Hit target code.\n");
+        }
+
         if (base_i->tp_dict == NULL) {
             if (PyType_Ready(base_i) < 0)
                 return NULL;
@@ -2403,7 +2408,7 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
 
     assert(args != NULL && PyTuple_Check(args));
     assert(kwds == NULL || PyDict_Check(kwds));
-
+    
     /* Special case: type(x) should return x->ob_type */
     /* We only want type itself to accept the one-argument form (#27157)
        Note: We don't call PyType_CheckExact as that also allows subclasses */
@@ -5014,6 +5019,14 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
 #undef COPYMAP
 #undef COPYBUF
 
+// This macro can avoid dup slot value, for below code:
+//   class A(int):
+//      pass
+//   class C(A):
+//      pass
+// when build type C, slot 'nb_add' has the same value,
+// so only copy when run 'inherit_slots' with 'type' is 
+// 'C' and 'base' is 'int'.
 #define SLOTDEFINED(SLOT) \
     (base->SLOT != 0 && \
      (basebase == NULL || base->SLOT != basebase->SLOT))
