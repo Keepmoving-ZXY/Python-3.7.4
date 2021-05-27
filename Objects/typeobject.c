@@ -5286,6 +5286,11 @@ PyType_Ready(PyTypeObject *type)
     }
 
     /* Add type-specific descriptors to tp_dict */
+    // For different type, 'add_method', 'add_members', 'add_getset' 
+    // function will construct callable object that wrap different 
+    // function then save to dict, and even if the key of callable
+    // object is the same, the function that bind in a callable object
+    // maybe different.
     if (add_operators(type) < 0)
         goto error;
     if (type->tp_methods != NULL) {
@@ -7178,8 +7183,6 @@ resolve_slotdups(PyTypeObject *type, PyObject *name)
    interests, and then stores a generic wrapper or a specific function into
    the slot.)  Return a pointer to the next slotdef with a different offset,
    because that's convenient  for fixup_slot_dispatchers(). */
-// This function is hard to understand, TODO: make sense it, use gdb to have
-// a look how this function run?
 static slotdef *
 update_one_slot(PyTypeObject *type, slotdef *p)
 {
