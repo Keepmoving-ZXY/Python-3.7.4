@@ -5408,6 +5408,9 @@ PyType_Ready(PyTypeObject *type)
     /* Some more special stuff */
     base = type->tp_base;
     if (base != NULL) {
+        // Notice the condition of copy slot value from base type to 
+        // constructing type in function 'inherit_slots'. Content copy 
+        // here is very different with copy in 'inherit_slots'.
         if (type->tp_as_async == NULL)
             type->tp_as_async = base->tp_as_async;
         if (type->tp_as_number == NULL)
@@ -7508,7 +7511,6 @@ recurse_down_subclasses(PyTypeObject *type, PyObject *name,
    for a type that defines both mp_subscript and sq_item, mp_subscript
    wins.
     
-   // TODO: understand it.
    This only adds new descriptors and doesn't overwrite entries in
    tp_dict that were previously defined.  The descriptors contain a
    reference to the C function they must call, so that it's safe if they
@@ -7542,7 +7544,15 @@ add_operators(PyTypeObject *type)
                         " skip it.\n", p->name);
             continue;
         }
-
+        
+        // The return value of 'slotptr' controls whether use default 
+        // method or not. When value of 'ptr' is null, this means that
+        // this type don't need method group(I think of tp_as_number, 
+        // tp_as_mapping, tp_as_sequence as method group, because the 
+        // three contain more than one method), for example 'tp_as_number' 
+        // in list is null. When value of *ptr is not null, this means that 
+        // this function has it's own implement of a methon, don't need the 
+        // default method.
         ptr = slotptr(type, p->offset);
         if (!ptr || !*ptr) {
             if (debug)
