@@ -7171,10 +7171,20 @@ resolve_slotdups(PyTypeObject *type, PyObject *name)
     res = NULL;
     for (pp = ptrs; *pp; pp++) {
         ptr = slotptr(type, (*pp)->offset);
+        // Define field such as 'tp_as_number', 'tp_as_async' in type instance 
+        // as slot group, and each member in slot group such as 'am_wait' in 
+        // 'PyAsyncMethods' is called slot.
         if (ptr == NULL || *ptr == NULL)
+            // ptr == NULL means that in this type, the 
+            // slot group this slot belong to is null,
+            // and *ptr == NULL means that this slot is 
+            // null.
             continue;
         if (res != NULL)
+            // This type contain at least two slot in 
+            // a slot group that has the same name.
             return NULL;
+
         res = ptr;
     }
     return res;
@@ -7206,6 +7216,9 @@ update_one_slot(PyTypeObject *type, slotdef *p)
     /* We may end up clearing live exceptions below, so make sure it's ours. */
     assert(!PyErr_Occurred());
     do {
+        if (!strcmp(p->name, "__repr__"))
+            printf("Notice, code reach to target place.\n");
+
         /* Use faster uncached lookup as we won't get any cache hits during type setup. */
         descr = find_name_in_mro(type, p->name_strobj, &error);
         if (descr == NULL) {
