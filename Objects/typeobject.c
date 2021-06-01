@@ -2873,6 +2873,17 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         goto error;
 
     /* Put the proper slots in place */
+    // Replace default slot function with custom 
+    // function in some slot of this type, for 
+    // example:
+    //   class A(list):
+    //      def __repr__(self):
+    //          print('XXX')
+    //   
+    // during construction of this class, type A's
+    // original tp_repr ('__repr__' in python code)
+    // is list_repr, and then replace it with a function 
+    // that lookup '__repr__' in dict of this type.
     fixup_slot_dispatchers(type);
 
     if (type->tp_dictoffset) {
