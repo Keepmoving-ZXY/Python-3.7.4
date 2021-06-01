@@ -2065,9 +2065,6 @@ best_base(PyObject *bases)
         }
 
         base_i = (PyTypeObject *)base_proto;
-        if (!strcmp(base_i->tp_name, "A")) {
-            printf("Hit target code.\n");
-        }
 
         if (base_i->tp_dict == NULL) {
             if (PyType_Ready(base_i) < 0)
@@ -5332,8 +5329,8 @@ PyType_Ready(PyTypeObject *type)
     //      pass
     //  When construct type 'C', the type in bases is: A, long, type, and the
     //  nb_add will assign value two times, one for A and another for long.
-    if (!strcmp(type->tp_name, "C")) {
-        printf("Hint the construct of type C.\n");
+    if (!strcmp(type->tp_name, "A")) {
+        printf("Hint the construct of type A.\n");
     }
 
     for (i = 1; i < n; i++) {
@@ -5396,7 +5393,7 @@ PyType_Ready(PyTypeObject *type)
        tp_dict, set tp_hash to PyObject_HashNotImplemented and
        tp_dict['__hash__'] equal to None.
        This signals that __hash__ is not inherited.
-     */
+    */
     if (type->tp_hash == NULL) {
         if (_PyDict_GetItemId(type->tp_dict, &PyId___hash__) == NULL) {
             if (_PyDict_SetItemId(type->tp_dict, &PyId___hash__, Py_None) < 0)
@@ -7237,13 +7234,20 @@ update_one_slot(PyTypeObject *type, slotdef *p)
             ((PyWrapperDescrObject *)descr)->d_base->name_strobj == p->name_strobj) {
             void **tptr = resolve_slotdups(type, p->name_strobj);
             if (tptr == NULL || tptr == ptr)
+                // Code reach here assumes that slot function 
+                // will use the default function. 
                 generic = p->function;
             d = (PyWrapperDescrObject *)descr;
+            // Ensure the slot function comes from parent type of this type 
+            // and use the same wrapper function, notice why wrapper of the 
+            // two should the same.
             if (d->d_base->wrapper == p->wrapper &&
                 PyType_IsSubtype(type, PyDescr_TYPE(d)))
             {
                 if (specific == NULL ||
                     specific == d->d_wrapped)
+                    // Use the slot function from parent type, and the 
+                    // assume of using the default slot function is broken.
                     specific = d->d_wrapped;
                 else
                     use_generic = 1;
@@ -7592,6 +7596,8 @@ add_operators(PyTypeObject *type)
                 return -1;
         }
         else {
+            // type is the constructing type, p is slot in slotdefs,
+            // *ptr is the position of a slot in type's memory space. 
             descr = PyDescr_NewWrapper(type, p, *ptr);
             if (descr == NULL)
                 return -1;
