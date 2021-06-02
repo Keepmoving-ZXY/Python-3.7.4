@@ -2585,9 +2585,6 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                    below so won't act as class variables. */
                 if (!_PyUnicode_EqualToASCIIId(tmp, &PyId___qualname__) &&
                     !_PyUnicode_EqualToASCIIId(tmp, &PyId___classcell__)) {
-                    // It seems that at this point, value of 'tmp' must be 
-                    // both of __qualname__, __classcell__, I don't know why.
-                    // TODO: make sense it.
                     PyErr_Format(PyExc_ValueError,
                                  "%R in __slots__ conflicts with class variable",
                                  tmp);
@@ -2790,9 +2787,6 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                 goto error;
             mp->type = T_OBJECT_EX;
             mp->offset = slotoffset;
-            // TODO: It seems that mp->ml_meth is empty until now, 
-            //       find out where the mp->ml_meth fills in. 
-
             /* __dict__ and __weakref__ are already filtered out */
             assert(strcmp(mp->name, "__dict__") != 0);
             assert(strcmp(mp->name, "__weakref__") != 0);
@@ -2838,7 +2832,6 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
 
     /* Enable GC unless this class is not adding new instance variables and
        the base class did not use GC. */
-    // TODO: I don't know why, make sense it.
     if ((base->tp_flags & Py_TPFLAGS_HAVE_GC) ||
         type->tp_basicsize > base->tp_basicsize)
         type->tp_flags |= Py_TPFLAGS_HAVE_GC;
@@ -2868,6 +2861,10 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         PyErr_Clear();
     }
 
+    if (!strcmp(type->tp_name, "A")) {
+        printf("Hint the construct of type A.\n");
+    }
+
     /* Initialize the rest */
     if (PyType_Ready(type) < 0)
         goto error;
@@ -2883,8 +2880,19 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     // during construction of this class, type A's
     // original tp_repr ('__repr__' in python code)
     // is list_repr, and then replace it with a function 
-    // that lookup '__repr__' in dict of this type.
+    // that lookup '__repr__' in dict of this type. And
+    // also notice that construction of builtin type don't
+    // need this function, only construction of custom type 
+    // (class define in python code) need this function.
     fixup_slot_dispatchers(type);
+
+    // And also pay attention to the difference of three functions, they are 
+    // 'inherit_slots', 'inherit_special' and 'fixup_slot_dispatchers'. The 
+    // 'inherit_special' copy a little of field (not slot function) from best 
+    // base to the type, the 'inherit_special' copy some slot function from base
+    // to type in limited case, the 'fixup_slot_dispatchers' handle the casethat 
+    // user defined method of type like __repr__ and also inherit some descriptor 
+    // from base.
 
     if (type->tp_dictoffset) {
         et->ht_cached_keys = _PyDict_NewKeysForClass();
@@ -4976,8 +4984,6 @@ inherit_special(PyTypeObject *type, PyTypeObject *base)
 #define COPYVAL(SLOT) \
     if (type->SLOT == 0) type->SLOT = base->SLOT
     
-    // TODO: Why type's tp_itemsize, tp_weaklistoffset, 
-    //       tp_dictoffset must be the same as it's base.
     COPYVAL(tp_itemsize);
     COPYVAL(tp_weaklistoffset);
     COPYVAL(tp_dictoffset);
@@ -5039,6 +5045,8 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
     (base->SLOT != 0 && \
      (basebase == NULL || base->SLOT != basebase->SLOT))
 
+// Notice that if 'type->SLOT' is not null, this macro avoid copy 
+// slot function, and also notice the limit macro 'SLOTDEFINED' brings.
 #define COPYSLOT(SLOT) \
     if (!type->SLOT && SLOTDEFINED(SLOT)) type->SLOT = base->SLOT
 
@@ -5296,9 +5304,11 @@ PyType_Ready(PyTypeObject *type)
     /* Add type-specific descriptors to tp_dict */
     // For different type, 'add_method', 'add_members', 'add_getset' 
     // function will construct callable object that wrap different 
-    // function then save to dict, and even if the key of callable
-    // object is the same, the function that bind in a callable object
-    // maybe different.
+    // function then save to dict.
+    // And if the type is a user defined class, not a builtin type, 
+    // this function nearly do nothing, and only for builtin type 
+    // this function construct a descriptor object then add it to 
+    // dict of the builtin type.
     if (add_operators(type) < 0)
         goto error;
     if (type->tp_methods != NULL) {
@@ -5343,7 +5353,8 @@ PyType_Ready(PyTypeObject *type)
     if (!strcmp(type->tp_name, "A")) {
         printf("Hint the construct of type A.\n");
     }
-
+    
+    // Inherit some slot function from base in mro.
     for (i = 1; i < n; i++) {
         PyObject *b = PyTuple_GET_ITEM(bases, i);
         if (PyType_Check(b))
@@ -7558,47 +7569,24 @@ add_operators(PyTypeObject *type)
     PyObject *descr;
     void **ptr;
 
-    // Add to help understand this function.
-    int debug = 0;
-    
-    if (getenv("ADD_OPERATOR_DEBUG"))
-        debug = 1;
-
     init_slotdefs();
     for (p = slotdefs; p->name; p++) {
-        if (p->wrapper == NULL) {
-            if (debug) 
-                printf("[slot %s] Field wrapper of this slot is empty," 
-                        " skip it.\n", p->name);
+        if (p->wrapper == NULL)
             continue;
-        }
         
-        // The return value of 'slotptr' controls whether use default 
-        // method or not. When value of 'ptr' is null, this means that
-        // this type don't need method group(I think of tp_as_number, 
-        // tp_as_mapping, tp_as_sequence as method group, because the 
-        // three contain more than one method), for example 'tp_as_number' 
-        // in list is null. When value of *ptr is not null, this means that 
-        // this function has it's own implement of a methon, don't need the 
-        // default method.
+        // When value of 'ptr' is null, this means that this type don't need 
+        // method group(I think of tp_as_number, tp_as_mapping, tp_as_sequence 
+        // as method group, because the three contain more than one method), 
+        // for example 'tp_as_number' in list is null. When value of *ptr is 
+        // not null, this means that this function has it's own implement of a 
+        // method.
         ptr = slotptr(type, p->offset);
-        if (!ptr || !*ptr) {
-            if (debug)
-                printf("[slot %s] Pointer to this slot in object %lx is empty,"
-                        " skip it.\n", p->name, (uint64_t)type);
+        if (!ptr || !*ptr)
             continue;
-        }
 
-        if (PyDict_GetItem(dict, p->name_strobj)) {
-            if (debug)
-                printf("[slot %s] the dict of object %lx is not empty, "
-                        "skip it.\n", p->name, (uint64_t)type);
+        if (PyDict_GetItem(dict, p->name_strobj))
             continue;
-        }
         
-        if (debug)
-            printf("[slot %s] a needed check of this slot pass.\n", p->name);
-
         if (*ptr == (void *)PyObject_HashNotImplemented) {
             /* Classes may prevent the inheritance of the tp_hash
                slot by storing PyObject_HashNotImplemented in it. Make it
@@ -7608,7 +7596,7 @@ add_operators(PyTypeObject *type)
         }
         else {
             // type is the constructing type, p is slot in slotdefs,
-            // *ptr is the position of a slot in type's memory space. 
+            // *ptr is the slot function. 
             descr = PyDescr_NewWrapper(type, p, *ptr);
             if (descr == NULL)
                 return -1;
