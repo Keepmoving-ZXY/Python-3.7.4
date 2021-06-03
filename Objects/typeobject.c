@@ -934,7 +934,7 @@ type_call(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *obj;
     
-    if (NULL != getenv("PYTHON_DEBUG")) {
+    if (getenv("PYTHON_DEBUG")) {
         printf("[type_call] type name is %s.\n", type->tp_name);
     }
 
@@ -1410,6 +1410,7 @@ type_is_subtype_base_chain(PyTypeObject *a, PyTypeObject *b)
     return (b == &PyBaseObject_Type);
 }
 
+// b appears a's MRO, this means a is subclass of b. 
 int
 PyType_IsSubtype(PyTypeObject *a, PyTypeObject *b)
 {
@@ -2433,6 +2434,14 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTuple(args, "UO!O!:type.__new__", &name, &PyTuple_Type,
                           &bases, &PyDict_Type, &orig_dict))
         return NULL;
+    
+    {
+        Py_ssize_t name_size = 0;
+        const char *type_name = NULL; 
+        type_name = PyUnicode_AsUTF8AndSize(name, &name_size); 
+        if (!strcmp(type_name, "C"))
+            printf("Hint the target code.\n");
+    }
 
     /* Adjust for empty tuple bases */
     nbases = PyTuple_GET_SIZE(bases);
@@ -2463,6 +2472,9 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
             }
         }
         /* Search the bases for the proper metatype to deal with this: */
+        // Notice that type of a type in almost all case is PyType_Type, so 
+        // in most time the winner is PyType_Type, and if a class (it's also
+        // a type) has metaclass, the should be the metaclass in class define.
         winner = _PyType_CalculateMetaclass(metatype, bases);
         if (winner == NULL) {
             return NULL;
@@ -2519,8 +2531,6 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         /* Are slots allowed? */
         nslots = PyTuple_GET_SIZE(slots);
         if (nslots > 0 && base->tp_itemsize != 0) {
-            // TODO: Why __slot__ is not compatible with the base 
-            //       class which length is not a fixed value.
             PyErr_Format(PyExc_TypeError,
                          "nonempty __slots__ "
                          "not supported for subtype of '%s'",
@@ -2861,8 +2871,8 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
         PyErr_Clear();
     }
 
-    if (!strcmp(type->tp_name, "A")) {
-        printf("Hint the construct of type A.\n");
+    if (!strcmp(type->tp_name, "E")) {
+        printf("Hint the construct of type E.\n");
     }
 
     /* Initialize the rest */
@@ -7235,9 +7245,6 @@ update_one_slot(PyTypeObject *type, slotdef *p)
     /* We may end up clearing live exceptions below, so make sure it's ours. */
     assert(!PyErr_Occurred());
     do {
-        if (!strcmp(p->name, "__repr__"))
-            printf("Notice, code reach to target place.\n");
-
         /* Use faster uncached lookup as we won't get any cache hits during type setup. */
         descr = find_name_in_mro(type, p->name_strobj, &error);
         if (descr == NULL) {
