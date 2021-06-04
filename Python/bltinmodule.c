@@ -60,7 +60,7 @@ update_bases(PyObject *bases, PyObject *const *args, Py_ssize_t nargs)
     assert(PyTuple_Check(bases));
 
     for (i = 0; i < nargs; i++) {
-        base  = args[i];
+        base = args[i];
         if (PyType_Check(base)) {
             if (new_bases) {
                 /* If we already have made a replacement, then we append every normal base,
@@ -151,9 +151,9 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
     //          print('woof')
     //          
     // When run here, the objects in args is:
-    // top - 2: python cfunction 'builtin__build_class__',
-    // top - 1: python function 'dog',
-    // top - 0: function name, a python unicode object.
+    // top - (nargs-2): bases of class,
+    // top - 1: class name, 
+    // top - 0: python function 'Dog';
     name = args[1];
     if (!PyUnicode_Check(name)) {
         PyErr_SetString(PyExc_TypeError,
@@ -164,26 +164,26 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
     if (orig_bases == NULL)
         return NULL;
     
-    if (NULL != getenv("PYTHON_DEBUG")) {
-        PyObject *tmp = NULL;
-        const char *f_name = NULL;
-        const char *target = NULL;
-        tmp = PyUnicode_AsASCIIString(name);
-        f_name = PyBytes_AsString(tmp);
-        printf("[__build_class__] function name is %s.\n", f_name);
+   
+    // 'update_base' run __mro_entry__ of each base and save the run results. 
+    // A example of class that has __mro_entry__ method:
+    //   class GenericAlias:
+    //       def __init__(self, origin, item):
+    //           self.origin = origin
+    //           self.item = item
+    //       def __mro_entries__(self, bases):
+    //           return (self.origin,)
 
-        target = getenv("STOP_FUNC");
-        if (NULL != target) {
-            size_t a = strlen(f_name);
-            size_t b = strlen(target);
-            int ret = strncmp(f_name, target, a > b ? b : a);
-            if (0 == ret) {
-                printf("[__build_class__] code reach target function %s.\n", f_name);
-            }
-        }
-    }
-    
-    // TODO(zxy): Ignore this function temporarily.
+    //   class NewList:
+    //       def __class_getitem__(cls, item):
+    //           return GenericAlias(cls, item)
+
+    //   class Tokens(NewList[int]):
+    //       ...
+
+    //   assert Tokens.__bases__ == (NewList,)
+    //   assert Tokens.__orig_bases__ == (NewList[int],)
+    //   assert Tokens.__mro__ == (Tokens, NewList, object)
     bases = update_bases(orig_bases, args + 2, nargs - 2);
     if (bases == NULL) {
         Py_DECREF(orig_bases);
@@ -272,7 +272,27 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
                      Py_TYPE(ns)->tp_name);
         goto error;
     }
-    
+
+    if (NULL != getenv("PYTHON_DEBUG")) {
+        PyObject *tmp = NULL;
+        const char *f_name = NULL;
+        const char *target = NULL;
+        tmp = PyUnicode_AsASCIIString(name);
+        f_name = PyBytes_AsString(tmp);
+
+        target = getenv("STOP_FUNC");
+        if (NULL != target) {
+            size_t a = strlen(f_name);
+            size_t b = strlen(target);
+            if (a == b) {
+                int ret = strncmp(f_name, target, a > b ? b : a);
+                if (0 == ret)
+                    printf("[__build_class__] code reach target function %s.\n", 
+                            f_name);
+            }
+        }
+    }
+ 
     // Run bytecode of a class, setup '__module__', '__qualname__', 
     // class method(function object) and so on to local namespace.
     cell = PyEval_EvalCodeEx(PyFunction_GET_CODE(func), PyFunction_GET_GLOBALS(func), ns,
@@ -285,7 +305,8 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
             }
         }
         PyObject *margs[3] = {name, bases, ns};
-        // Build new class instance.
+        // If the meta is type, run type's tp_call, 
+        // cls is the new constructed custom type.
         cls = _PyObject_FastCallDict(meta, margs, 3, mkw);
         if (cls != NULL && PyType_Check(cls) && PyCell_Check(cell)) {
             PyObject *cell_cls = PyCell_GET(cell);

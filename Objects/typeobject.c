@@ -933,10 +933,6 @@ static PyObject *
 type_call(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *obj;
-    
-    if (getenv("PYTHON_DEBUG")) {
-        printf("[type_call] type name is %s.\n", type->tp_name);
-    }
 
     if (type->tp_new == NULL) {
         PyErr_Format(PyExc_TypeError,
