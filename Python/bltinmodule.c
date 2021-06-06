@@ -295,6 +295,25 @@ builtin___build_class__(PyObject *self, PyObject *const *args, Py_ssize_t nargs,
  
     // Run bytecode of a class, setup '__module__', '__qualname__', 
     // class method(function object) and so on to local namespace.
+    // For python code:
+    //
+    //  class class F(E):
+    //      def say_hello(self):
+    //      print("Hello, I am F.\n")
+    // 
+    //  the byte code of func in this case is;
+    //      LOAD_NAME     :lookup name from global ns, k is '__name__', 
+    //                     v is '__main__', then push to TOS; 
+    //      STORE_NAME    :store {'__module__':'__main__'} to local ns;
+    //      LOAD_CONST    :load 'F'from fastlocal then push to TOS;
+    //      STORE_NAME    :store {'__qualname__':'F'} to local ns;
+    //      LOAD_CONST    :load code object of 'say_hello' in python code then
+    //                     save to TOS;
+    //      LOAD_CONST    :load 'F.say_hello' from fastlocal, then save to TOS;
+    //      MAKE_FUNCTION :make function with name and code object in stack, 
+    //                     build a function object;
+    //      STORE_NAME    :function object at TOS as key, name at TOS -1 as value, 
+    //                     save them to ns.
     cell = PyEval_EvalCodeEx(PyFunction_GET_CODE(func), PyFunction_GET_GLOBALS(func), ns,
                              NULL, 0, NULL, 0, NULL, 0, NULL,
                              PyFunction_GET_CLOSURE(func));
