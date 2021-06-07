@@ -933,6 +933,15 @@ static PyObject *
 type_call(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *obj;
+    
+    {
+        size_t a = strlen(type->tp_name);
+        size_t b = strlen("F");
+        if (a == b) {
+            if (!strncmp(type->tp_name, "F", a))
+                printf("Notice, run tp_call of class F.\n");
+        }
+    }
 
     if (type->tp_new == NULL) {
         PyErr_Format(PyExc_TypeError,
@@ -2321,6 +2330,7 @@ type_init(PyObject *cls, PyObject *args, PyObject *kwds)
 
     if (kwds != NULL && PyTuple_Check(args) && PyTuple_GET_SIZE(args) == 1 &&
         PyDict_Check(kwds) && PyDict_GET_SIZE(kwds) != 0) {
+        // __init__ has 1 positional arg and at least 1 kwargs;
         PyErr_SetString(PyExc_TypeError,
                         "type.__init__() takes no keyword arguments");
         return -1;
@@ -2328,6 +2338,7 @@ type_init(PyObject *cls, PyObject *args, PyObject *kwds)
 
     if (args != NULL && PyTuple_Check(args) &&
         (PyTuple_GET_SIZE(args) != 1 && PyTuple_GET_SIZE(args) != 3)) {
+        // __init__ need 1 or 3 position arguments;
         PyErr_SetString(PyExc_TypeError,
                         "type.__init__() takes 1 or 3 arguments");
         return -1;

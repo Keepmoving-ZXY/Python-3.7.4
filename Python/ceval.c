@@ -3260,6 +3260,18 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
                 PyObject* codeobj = POP();
                 PyFunctionObject* func = (PyFunctionObject*)
                     PyFunction_NewWithQualName(codeobj, f->f_globals, qualname);
+                
+                {
+                    Py_ssize_t name_size = 0;
+                    const char *name = NULL;
+                    name = PyUnicode_AsUTF8AndSize(qualname, &name_size);
+                    size_t a = strlen(name);
+                    size_t b = strlen("F");
+                    if (a == b) {
+                        if (!strncmp(name, "F", a))
+                            printf("Notice, code reach to construction of class F.\n");
+                    }
+                }
 
                 Py_DECREF(codeobj);
                 Py_DECREF(qualname);
