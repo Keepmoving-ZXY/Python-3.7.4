@@ -1140,7 +1140,8 @@ _PyObject_GetMethod(PyObject *obj, PyObject *name, PyObject **method)
 
     if (tp->tp_dict == NULL && PyType_Ready(tp) < 0)
         return 0;
-
+    
+    // Lookup method via name by the sequence of type in tp->tp_mro. 
     descr = _PyType_Lookup(tp, name);
     if (descr != NULL) {
         Py_INCREF(descr);
@@ -1156,7 +1157,8 @@ _PyObject_GetMethod(PyObject *obj, PyObject *name, PyObject **method)
             }
         }
     }
-
+    
+    // Else lookup method from instance's dict.
     dictptr = _PyObject_GetDictPtr(obj);
     if (dictptr != NULL && (dict = *dictptr) != NULL) {
         Py_INCREF(dict);

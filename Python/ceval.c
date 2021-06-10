@@ -2089,6 +2089,21 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
                         "no locals when loading %R", name);
                     goto error;
                 }
+                
+                {
+                    Py_ssize_t name_size = 0;
+                    const char *fn_name = NULL;
+                    fn_name = PyUnicode_AsUTF8AndSize(name, &name_size);
+                    if (fn_name == NULL) {
+                        printf("[LOAD_NAME] notice convert name failed.\n");
+                    } else {
+                        size_t a = strlen("print");
+                        size_t b = strlen(fn_name);
+                        if ((a == b) && (!strncmp(fn_name, "print", a)))
+                            printf("[LOAD_NAME] notice, run to target code.\n");
+                    }
+                        
+                }
 
                 if (PyDict_CheckExact(locals)) {
                     v = PyDict_GetItem(locals, name);
@@ -4738,20 +4753,7 @@ Py_LOCAL_INLINE(PyObject*) _Py_HOT_FUNCTION
         }
 
         if (PyFunction_Check(func)) {
-            const char* stop_function = NULL;
-            if (NULL != (getenv("PYTHON_DEBUG")) && (NULL != (stop_function = getenv("STOP_FUNC")))) {
-                PyObject* temp = NULL;
-                temp = PyUnicode_AsASCIIString(
-                    ((PyFunctionObject*)func)->func_name);
-                if (NULL == temp) {
-                    printf("func->func_name can't convert to ASCII.\n");
-                } else {
-                    char* func_name = PyBytes_AsString(temp);
-                    if (0 == strncmp(func_name, stop_function, strlen(func_name)))
-                        printf("[call_function] function name is %s\n", stop_function);
-                }
-            }
-            x = _PyFunction_FastCallKeywords(func, stack, nargs, kwnames);
+           x = _PyFunction_FastCallKeywords(func, stack, nargs, kwnames);
         } else {
             x = _PyObject_FastCallKeywords(func, stack, nargs, kwnames);
         }
