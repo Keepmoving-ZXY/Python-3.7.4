@@ -3103,6 +3103,19 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
                 PyObject* name = GETITEM(names, oparg);
                 PyObject* obj = TOP();
                 PyObject* meth = NULL;
+                
+                {
+                    const char *ml_name = NULL;
+                    Py_ssize_t size = 0;
+                    ml_name = PyUnicode_AsUTF8AndSize(name, &size);
+                    if (ml_name) {
+                        size_t a = strlen("instance");
+                        size_t b = strlen(ml_name);
+                        if ((a == b) && (!strncmp(ml_name, "instance", a)))
+                            printf("Notice, code run to load method %s.\n", 
+                                    ml_name);
+                    }
+                }
 
                 int meth_found = _PyObject_GetMethod(obj, name, &meth);
 
@@ -3113,10 +3126,13 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
 
                 if (meth_found) {
                     /* We can bypass temporary bound method object.
-                   meth is unbound method and obj is self.
+                       meth is unbound method and obj is self.
 
-                   meth | self | arg1 | ... | argN
-                 */
+                       meth | self | arg1 | ... | argN
+                    */
+
+                    // The method is a bounded method, need 
+                    // the class instance during run.
                     SET_TOP(meth);
                     PUSH(obj); // self
                 } else {
