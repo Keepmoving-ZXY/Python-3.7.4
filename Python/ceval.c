@@ -2032,6 +2032,19 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
                 PyObject* owner = TOP();
                 PyObject* v = SECOND();
                 int err;
+
+                {
+                    const char *attr_name = NULL;
+                    Py_ssize_t name_size = 0;
+                    attr_name = PyUnicode_AsUTF8AndSize(name, &name_size);
+                    if (attr_name) {
+                        size_t a = strlen(attr_name);
+                        size_t b = strlen("x");
+                        if ((a == b) && (!strncmp(attr_name, "x", a)))
+                            printf("Notice, code reach to store attr x.\n");
+                    }
+                }
+ 
                 STACKADJ(-2);
                 err = PyObject_SetAttr(owner, name, v);
                 Py_DECREF(v);
@@ -2622,6 +2635,44 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
             {
                 PyObject* name = GETITEM(names, oparg);
                 PyObject* owner = TOP();
+
+                {
+                    const char *attr_name = NULL;
+                    Py_ssize_t name_size = 0;
+                    attr_name = PyUnicode_AsUTF8AndSize(name, &name_size);
+                    if (attr_name) {
+                        size_t a = strlen(attr_name);
+                        size_t b = strlen("x");
+                        if ((a == b) && (!strncmp(attr_name, "x", a)))
+                            printf("Notice, code reach to load attr x.\n");
+                    }
+                }
+                
+                // For below class:
+                //
+                //  class Point:
+                //    z = 0
+                //    def __init__(self, x, y):
+                //        self.x = x
+                //        self.y = y
+                //
+                //    def instance(self):
+                //        return math.sqrt(self.x * self.x + self.y * self.y)
+                //
+                //  point = Point(10, 20)
+                //  point.instance()
+                //
+                // During run of 'instance' method, 'x' is saved in the dict of 
+                // class instance 'point', and 'self.x' correspond to 'LOAD_ATTR'
+                // instruction, then the 'PyObject_GetAttr' will lookup value of
+                // 'x' from the class instance's dict. And the 'PyObject_GetAttr'
+                // will run 'PyObject_GenericGetAttr' function to fetch value of
+                // 'x' in class instance's dict.
+                // 
+                // During run of '__init__' method, value of 'x' is saved to class
+                // instance with the help of 'STORE_ATTR' instruction, the 
+                // 'STORE_ATTR' will run 'PyObject_GenericSetAttr' to save value of 
+                // 'x' into class instance's dict.
                 PyObject* res = PyObject_GetAttr(owner, name);
                 Py_DECREF(owner);
                 SET_TOP(res);
