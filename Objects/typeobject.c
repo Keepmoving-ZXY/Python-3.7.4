@@ -2442,14 +2442,6 @@ type_new(PyTypeObject *metatype, PyObject *args, PyObject *kwds)
                           &bases, &PyDict_Type, &orig_dict))
         return NULL;
     
-    {
-        Py_ssize_t name_size = 0;
-        const char *type_name = NULL; 
-        type_name = PyUnicode_AsUTF8AndSize(name, &name_size); 
-        if (!strcmp(type_name, "C"))
-            printf("Hint the target code.\n");
-    }
-
     /* Adjust for empty tuple bases */
     nbases = PyTuple_GET_SIZE(bases);
     if (nbases == 0) {

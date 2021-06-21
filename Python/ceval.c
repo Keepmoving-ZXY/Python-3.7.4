@@ -3348,10 +3348,10 @@ _PyEval_EvalFrameDefault(PyFrameObject* f, int throwflag)
                     const char *name = NULL;
                     name = PyUnicode_AsUTF8AndSize(qualname, &name_size);
                     size_t a = strlen(name);
-                    size_t b = strlen("F");
+                    size_t b = strlen("co_process");
                     if (a == b) {
                         if (!strncmp(name, "F", a))
-                            printf("Notice, code reach to construction of class F.\n");
+                            printf("Notice, code reach to construction of co_process.\n");
                     }
                 }
 

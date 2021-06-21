@@ -807,6 +807,24 @@ gen_new_with_qualname(PyTypeObject *type, PyFrameObject *f,
     return (PyObject *)gen;
 }
 
+// For code:
+//
+//   def co_process(arg):
+//      print('task with argument {} started'.format(arg))
+//              
+//      data = yield 1
+//      print('step one finished， got {} from caller'.format(data))
+//                          
+//      data = yield 2
+//      print('step two finished， got {} from caller'.format(data))
+//                                      
+//      data = yield 3
+//      print('step three finished， got {} from caller'.format(data))
+//
+//   genco = co_process('foo')
+// 
+// The code 'genco = co_process('foo')' will trigger python interpreter that run
+// this function to create a PyGenObject. 
 PyObject *
 PyGen_NewWithQualName(PyFrameObject *f, PyObject *name, PyObject *qualname)
 {
