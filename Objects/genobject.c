@@ -166,6 +166,14 @@ gen_send_ex(PyGenObject *gen, PyObject *arg, int exc, int closing)
         PyErr_SetString(PyExc_ValueError, msg);
         return NULL;
     }
+    
+    // In function '_PyEval_EvalFrameDefault', before execute any instruction,
+    // frame's f_stacktop will set to NULL, and when that function exit with
+    // end of instruction sequence, value of the frame's f_stacktop don't change.
+    // and when that function exit with YIELD_VALUE instruction, the frame's 
+    // f_stacktop value will set to current's stacktop because the bytecode may
+    // add or fetch value from stack. So 'gen_send_ex' can check whether the 
+    // gen object run to finish or not.
     if (f == NULL || f->f_stacktop == NULL) {
         if (PyCoro_CheckExact(gen) && !closing) {
             /* `gen` is an exhausted coroutine: raise an error,
